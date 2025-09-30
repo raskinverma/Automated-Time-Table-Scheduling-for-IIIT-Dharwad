@@ -1,0 +1,8 @@
+Room Number,Type,Capacity,Facilities
+C101,Classroom,80,Projector
+C102,Classroom,80,Projector
+C103,Classroom,60,Projector
+L201,Lab,40,"Computers, Projector"
+L202,Lab,40,Computers
+L203,Lab,30,Computers
+Audi,Classroom,200,"Projector, Mic System"

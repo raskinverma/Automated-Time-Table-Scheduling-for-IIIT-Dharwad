@@ -1,0 +1,7 @@
+Course Code,Course Name,Semester,Department,LTPSC,Credits,Instructor,Registered Students,Elective (Yes/No),Half Semester (Yes/No)
+MA163,Linear Algebra,3,CSE,3-0-0-0-3,3,Prof. Vivekraj VK,170,No,No
+CS201,Data Structures & Algorithms,3,CSE,3-1-0-0-4,4,Dr. Ramesh Kulkarni,170,No,No
+CS203,Computer Organization,3,CSE,3-0-2-0-4,4,Dr. Manish Sharma,170,No,No
+CS205,Operating Systems,5,CSE,3-0-2-0-4,4,Dr. Pratibha Singh,160,No,No
+HS201,English & Communication Skills,1,HSS,2-0-2-0-3,3,Ms. Neha Patil,175,No,Yes
+AI301,Introduction to AI,5,CSE,3-0-2-0-4,4,Dr. Prakash Joshi,85,Yes,No
