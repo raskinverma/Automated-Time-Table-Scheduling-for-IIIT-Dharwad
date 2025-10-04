@@ -1,14 +1,13 @@
-Department,Semester,Course Code,Course Name,L,T,P,S,C,Faculty
-CSE,3,MA261,Differential Equations,3,1,0,3,2,Dr. Anand Barangi
-CSE,3,MA262,Multivariate Calculus,3,1,0,3,2,Dr. Somen Bhattacharjee
-CSE,3,CS261,Operating Systems,3,0,0,4,2,Dr. Suvadip Hazra
-CSE,3,CS262,Software design tools and technique,2,0,3,0,3,Dr. Vivekraj V K
-CSE,3,CS263,Design & Analysis of Algorithms,3,0,0,0,4,Dr. Pramod Yelmewad
-CSE,3,CS264,Computer Networks,3,1,0,0,4,Dr. Prabhu Prasad BM
-CSE,3,HS261,Ethics and Values,4,0,0,2,2,Dr. Aswath Babu H
-CSE,3,HS262,Environmental Studies,0,0,2,1,1,Dr. Aswath Babu H
-CSE,3,EC251,Electronics System Design-I,3,1,0,2,2,Dr. Pankaj Kumar
-CSE,3,CS162,Data Science with Python,3,1,0,2,2,Dr. Abdul Wahid
-CSE,3,NEW,2D Computer Graphics,3,1,0,2,2,Dr. Vivekraj V K
-CSE,3,NEW,Introduction to RFIC Design,3,1,0,2,2,Dr. Sibasankar Padhy
-CSE,3,NEW,Electronic System Engineering,3,1,0,2,2,Dr. Malay
+Course_Code,Course_Title,L-T-P-S-C,Faculty,Semester_Half,Elective
+MA261,Differential Equations,3-1-0-0-2,Dr. Anand Barangi,1,0
+MA262,Multivariate Calculus,3-1-0-0-2,Dr. Somen Bhattacharjee,2,0
+CS261,Operating Systems,3-1-0-4-2,Dr. Suvadip Hazra,2,0
+CS262,Software design tools and technique,3-0-2-0-3,Dr. Sunil P V/Dr. Vivekraj VK,0,0
+CS263,Design & Analysis of Algorithms,3-0-2-0-4,Dr. Malay/Dr. Pramod Y,0,0
+CS264,Computer Networks,3-1-0-0-4,Dr. Prabhu Prasad BM,0,0
+HS261+HS262,HSS (Ethics Values+Environmental Studies),3-0-0-0-2,Dr. Ganesh MP/Dr. Aswath Babu H,0,0
+NEW,Electronics System Design-I,3-1-0-0-2,Dr. Pankaj,1,1
+CS162,Data Science with Python,3-1-0-0-2,Dr. Abdul Wahid,1,1
+NEW,2D Computer Graphics,3-1-0-0-2,Dr. Vivek VK,2,1
+NEW,Introduction to RFIC Design,3-1-0-0-2,Dr. Sibasankar Padhy,2,1
+NEW,Electronic System Engineering,3-1-0-0-2,Mr. Mallikarjun Kande,2,1

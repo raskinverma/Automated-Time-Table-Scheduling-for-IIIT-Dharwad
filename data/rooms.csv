@@ -1,4 +1,4 @@
-Room ID,Capacity,Type,Facilities
+Room_ID,Capacity,Type,Facilities
 C101,85,Classroom,"Whiteboard, Display Screen"
 C102,85,Classroom,"Whiteboard, Display Screen"
 C103,-,Library,"Books, Desks"

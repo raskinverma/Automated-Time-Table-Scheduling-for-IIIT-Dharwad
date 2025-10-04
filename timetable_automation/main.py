@@ -1,73 +1,191 @@
 import pandas as pd
-from timetable_automation.models.course import Course
-from timetable_automation.models.faculty import Faculty
-from timetable_automation.models.room import Room
-from timetable_automation.models.batches import Batch
-from timetable_automation.models.timeslots import TimeSlot
+import random
 
-# 1. Load CSVs
-courses_df = pd.read_csv('data/courses.csv')
-faculty_df = pd.read_csv('data/faculty.csv')
-rooms_df = pd.read_csv('data/rooms.csv')
-batches_df = pd.read_csv('data/batches.csv')
-timeslots_df = pd.read_csv('data/timeslots.csv')
+df = pd.read_csv('data/timeslots.csv')
 
-# 2. Build objects
-courses_list = [
-    Course(row['Department'], row['Semester'], row['Course Code'], row['Course Name'],
-           row['L'], row['T'], row['P'], row['S'], row['C'], row['Faculty'])
-    for _, row in courses_df.iterrows()
-]
-faculty_list = [Faculty(row['Faculty ID'], row['Name']) for _, row in faculty_df.iterrows()]
-rooms_list = [Room(row['Room ID'], row['Capacity'], row['Type'], row['Facilities']) for _, row in rooms_df.iterrows()]
-batches_list = [Batch(row['Department'], row['Semester'], row['Total_Students'], row['MaxBatchSize']) for _, row in batches_df.iterrows()]
-slots_list = [TimeSlot(row['Slot_ID'], row['Day'], row['Start_Time'], row['End_Time']) for _, row in timeslots_df.iterrows()]
+slots = [{"start": row["Start_Time"], "end": row["End_Time"]} for _, row in df.iterrows()]
 
-# 3. Timetable grid and slot mapping
-days = ["MON", "TUE", "WED", "THU", "FRI"]
-mess_start, mess_end = "12:30", "14:00"
-slots_for_grid = []
-slot_day_mapping = {}
+slot_keys = [f"{slot['start'].strip()}-{slot['end'].strip()}" for slot in slots]
 
-for _, row in timeslots_df.iterrows():
-    st, et = row['Start_Time'].strip(), row['End_Time'].strip()
-    if not (et > mess_start and st < mess_end):
-        slot_label = f"{st}-{et}"
-        slots_for_grid.append(slot_label)
-        slot_day_mapping.setdefault(row['Day'], []).append(slot_label)
+def slot_duration(slot):
+    start, end = slot.split("-")
+    h1, m1 = map(int, start.split(":"))
+    h2, m2 = map(int, end.split(":"))
+    return (h2 + m2 / 60) - (h1 + m1 / 60)
 
-# Remove duplicates in slot labels
-slots_for_grid = list(dict.fromkeys(slots_for_grid))
+slot_durations = {s: slot_duration(s) for s in slot_keys}
 
-timetable = pd.DataFrame('', index=days, columns=slots_for_grid)
-timetable = timetable.loc[~timetable.index.duplicated(keep='first')]
-timetable = timetable.loc[:, ~timetable.columns.duplicated(keep='first')]
-assert timetable.index.is_unique, "Timetable index (days) contains duplicates!"
-assert timetable.columns.is_unique, "Timetable columns (slots) contains duplicates!"
+# ---------------- Load Courses and Rooms ----------------
+courses = pd.read_csv("data/courses.csv").to_dict(orient="records")
+rooms_df = pd.read_csv("data/rooms.csv")  # must have columns: Room_ID, Type
+classrooms = rooms_df[rooms_df["Type"].str.lower() == "classroom"]["Room_ID"].tolist()
+labs = rooms_df[rooms_df["Type"].str.lower() == "lab"]["Room_ID"].tolist()
 
-# 4. Safe assignment function
-def assign_slots(course, n_blocks, label):
-    count = 0
-    for day in days:
-        if day not in slot_day_mapping:
+# ---------------- Constants ----------------
+days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+excluded_slots = ["07:30-09:00", "13:15-14:00", "17:30-18:30"]
+MAX_ATTEMPTS = 10
+
+# ---------------- Functions ----------------
+def get_free_blocks(timetable, day):
+    free_blocks = []
+    block = []
+    for slot in slot_keys:
+        if timetable.at[day, slot] == "" and slot not in excluded_slots:
+            block.append(slot)
+        else:
+            if block:
+                free_blocks.append(block)
+                block = []
+    if block:
+        free_blocks.append(block)
+    return free_blocks
+
+# Track rooms assigned per course to ensure consistency
+course_room_map = {}
+
+def allocate_session(timetable, lecturer_busy, day, faculty, code, duration_hours, session_type="L", is_elective=False):
+    free_blocks = get_free_blocks(timetable, day)
+    for block in free_blocks:
+        total = sum(slot_durations[s] for s in block)
+        if total >= duration_hours:
+            slots_to_use = []
+            dur_accum = 0
+            for s in block:
+                slots_to_use.append(s)
+                dur_accum += slot_durations[s]
+                if dur_accum >= duration_hours:
+                    break
+
+            # Assign consistent room based on session type (skip for electives)
+            if not is_elective:
+                if code in course_room_map:
+                    room = course_room_map[code]
+                else:
+                    if session_type == "P":
+                        if not labs:
+                            print(f"No labs available for {code}")
+                            return False
+                        room = random.choice(labs)
+                    else:  # L or T
+                        if not classrooms:
+                            print(f"No classrooms available for {code}")
+                            return False
+                        room = random.choice(classrooms)
+                    course_room_map[code] = room
+
+            # Allocate slots, adding 15-min gap if available
+            for i, s in enumerate(slots_to_use):
+                if session_type == "L":
+                    timetable.at[day, s] = f"{code} ({room})" if not is_elective else code
+                elif session_type == "T":
+                    timetable.at[day, s] = f"{code}T ({room})" if not is_elective else f"{code}T"
+                elif session_type == "P":
+                    timetable.at[day, s] = f"{code} (Lab-{room})" if not is_elective else code
+
+                # Add 15-min gap after the slot if next slot is consecutive and 15-min
+                if i < len(slots_to_use) - 1:
+                    idx = slot_keys.index(s)
+                    next_idx = idx + 1
+                    if next_idx < len(slot_keys):
+                        gap_slot = slot_keys[next_idx]
+                        if timetable.at[day, gap_slot] == "" and slot_durations[gap_slot] == 0.25:
+                            timetable.at[day, gap_slot] = "FREE"
+
+            if faculty:
+                lecturer_busy[day].append(faculty)
+            return True
+    return False
+
+def generate_timetable(courses_to_allocate, filename):
+    timetable = pd.DataFrame("", index=days, columns=slot_keys)
+    lecturer_busy = {day: [] for day in days}
+    global course_room_map
+    course_room_map = {}
+
+    # ---------------- Separate electives ----------------
+    electives = [c for c in courses_to_allocate if str(c.get("Elective", 0)) == "1"]
+    non_electives = [c for c in courses_to_allocate if str(c.get("Elective", 0)) != "1"]
+
+    # ---------------- Pick only one elective ----------------
+    if electives:
+        chosen_elective = random.choice(electives)
+        elective_course = {
+            "Course_Code": "Elective",
+            "Faculty": chosen_elective.get("Faculty", ""),
+            "L-T-P-S-C": chosen_elective["L-T-P-S-C"]
+        }
+        non_electives.append(elective_course)
+
+    # ---------------- Allocate all courses ----------------
+    for course in non_electives:
+        faculty = str(course.get("Faculty", "")).strip()
+        code = str(course["Course_Code"]).strip()
+        is_elective = True if code == "Elective" else False
+
+        try:
+            L, T, P, S, C = map(int, [x.strip() for x in course["L-T-P-S-C"].split("-")])
+        except:
             continue
-        for slot in slot_day_mapping[day]:
-            slot = slot.strip()
-            if slot in timetable.columns and day in timetable.index:
-                val = timetable.at[day, slot]
-                if val == '':
-                    timetable.at[day, slot] = f"{course.course_code}-{label}"
-                    count += 1
-                    if count == int(n_blocks):
-                        return
-    if count < int(n_blocks):
-        print(f"Warning: Could not assign all slots for {course.course_code} {label}")
 
-for course in courses_list:
-    assign_slots(course, int(course.L), "L")
-    assign_slots(course, int(course.T), "T")
-    assign_slots(course, int(course.P), "P")
+        # --- Lectures ---
+        lecture_hours_remaining = L
+        attempts = 0
+        while lecture_hours_remaining > 0 and attempts < MAX_ATTEMPTS:
+            attempts += 1
+            for day in days:
+                if lecture_hours_remaining <= 0 or (faculty and faculty in lecturer_busy[day]):
+                    continue
+                alloc_hours = min(1.5, lecture_hours_remaining)
+                if allocate_session(timetable, lecturer_busy, day, faculty, code, alloc_hours, "L", is_elective):
+                    lecture_hours_remaining -= alloc_hours
+                    break
+        if lecture_hours_remaining > 0:
+            print(f"Warning: Could not fully allocate lectures for {code}")
 
-timetable.to_excel('data/final_timetable.xlsx', engine='openpyxl')
-print("Saved timetable to data/final_timetable.xlsx")
-print(timetable)
+        # --- Tutorials ---
+        tutorial_hours_remaining = T
+        attempts = 0
+        while tutorial_hours_remaining > 0 and attempts < MAX_ATTEMPTS:
+            attempts += 1
+            for day in days:
+                if tutorial_hours_remaining <= 0 or (faculty and faculty in lecturer_busy[day]):
+                    continue
+                if allocate_session(timetable, lecturer_busy, day, faculty, code, 1, "T", is_elective):
+                    tutorial_hours_remaining -= 1
+                    break
+        if tutorial_hours_remaining > 0:
+            print(f"Warning: Could not fully allocate tutorials for {code}")
+
+        # --- Practicals ---
+        practical_hours_remaining = P
+        attempts = 0
+        while practical_hours_remaining > 0 and attempts < MAX_ATTEMPTS:
+            attempts += 1
+            for day in days:
+                if practical_hours_remaining <= 0 or (faculty and faculty in lecturer_busy[day]):
+                    continue
+                alloc_hours = min(2, practical_hours_remaining) if practical_hours_remaining >= 2 else practical_hours_remaining
+                if allocate_session(timetable, lecturer_busy, day, faculty, code, alloc_hours, "P", is_elective):
+                    practical_hours_remaining -= alloc_hours
+                    break
+        if practical_hours_remaining > 0:
+            print(f"Warning: Could not fully allocate practicals for {code}")
+
+    # Clear excluded slots
+    for day in days:
+        for slot in excluded_slots:
+            if slot in timetable.columns:
+                timetable.at[day, slot] = ""
+
+    # Save timetable
+    timetable.to_excel(filename, index=True)
+    print(f"Saved timetable to {filename}")
+
+# ---------------- Split Courses by Semester Half ----------------
+courses_first_half = [c for c in courses if str(c.get("Semester_Half")).strip() in ["1", "0"]]
+courses_second_half = [c for c in courses if str(c.get("Semester_Half")).strip() in ["2", "0"]]
+
+# ---------------- Generate Timetables ----------------
+generate_timetable(courses_first_half, "timetable_first_half.xlsx")
+generate_timetable(courses_second_half, "timetable_second_half.xlsx")
