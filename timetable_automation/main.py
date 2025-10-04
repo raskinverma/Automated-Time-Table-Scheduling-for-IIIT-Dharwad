@@ -102,6 +102,19 @@ for course in courses_list:
 
 # Export schedule as CSV
 schedule_df = pd.DataFrame(schedule)
-schedule_df.to_csv('data/generated_timetable.csv', index=False)
-print(schedule_df.head())
+# Pivot timetable to have days as columns and time slots as rows
+pivot_df = schedule_df.pivot_table(
+    index=['Slot_ID', 'Start_Time', 'End_Time'], 
+    columns='Day', 
+    values=['Course Code', 'Room ID', 'Faculty'], 
+    aggfunc='first', 
+    fill_value=''
+)
 
+# Flatten the multi-level columns for easier reading
+pivot_df.columns = ['_'.join(col).strip() for col in pivot_df.columns.values]
+
+# Sort by Slot_ID to ensure chronological order
+pivot_df = pivot_df.sort_index()
+
+print(pivot_df)
