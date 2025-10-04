@@ -1,8 +1,8 @@
 class Course:
-    def __init__(self, course_id, name, semester, section, ctype, credits):
-        self.course_id = course_id
+    def __init__(self, id, name, faculty_id, batch_id, credits, ctype):
+        self.id = id
         self.name = name
-        self.semester = semester
-        self.section = section
-        self.ctype = ctype
+        self.faculty_id = faculty_id
+        self.batch_id = batch_id
         self.credits = credits
+        self.ctype = ctype
