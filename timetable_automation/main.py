@@ -7,7 +7,7 @@ from timetable_automation.models.timeslots import TimeSlot
 
 # 1. Load CSVs
 courses_df = pd.read_csv('data/courses.csv')
-faculty_df = pd.read_csv('data/faculty.csv')
+faculty_df = pd.read_csv('data/Faculty.csv')
 rooms_df = pd.read_csv('data/rooms.csv')
 batches_df = pd.read_csv('data/batches.csv')
 timeslots_df = pd.read_csv('data/timeslots.csv')
