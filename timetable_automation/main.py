@@ -1,10 +1,10 @@
 import pandas as pd
 import random
 
+# ---------------- Load Time Slots ----------------
 df = pd.read_csv('data/timeslots.csv')
 
 slots = [{"start": row["Start_Time"], "end": row["End_Time"]} for _, row in df.iterrows()]
-
 slot_keys = [f"{slot['start'].strip()}-{slot['end'].strip()}" for slot in slots]
 
 def slot_duration(slot):
@@ -97,7 +97,7 @@ def allocate_session(timetable, lecturer_busy, day, faculty, code, duration_hour
             return True
     return False
 
-def generate_timetable(courses_to_allocate, filename):
+def generate_timetable(courses_to_allocate, writer=None, sheet_name="Sheet1"):
     timetable = pd.DataFrame("", index=days, columns=slot_keys)
     lecturer_busy = {day: [] for day in days}
     global course_room_map
@@ -178,14 +178,20 @@ def generate_timetable(courses_to_allocate, filename):
             if slot in timetable.columns:
                 timetable.at[day, slot] = ""
 
-    # Save timetable
-    timetable.to_excel(filename, index=True)
-    print(f"Saved timetable to {filename}")
+    # Save timetable to Excel sheet
+    if writer:
+        timetable.to_excel(writer, sheet_name=sheet_name, index=True)
+        print(f"Saved timetable to sheet '{sheet_name}'")
+    else:
+        timetable.to_excel(sheet_name + ".xlsx", index=True)
+        print(f"Saved timetable to {sheet_name}.xlsx")
+
 
 # ---------------- Split Courses by Semester Half ----------------
 courses_first_half = [c for c in courses if str(c.get("Semester_Half")).strip() in ["1", "0"]]
 courses_second_half = [c for c in courses if str(c.get("Semester_Half")).strip() in ["2", "0"]]
 
-# ---------------- Generate Timetables ----------------
-generate_timetable(courses_first_half, "timetable_first_half.xlsx")
-generate_timetable(courses_second_half, "timetable_second_half.xlsx")
+# ---------------- Generate Timetables into one Excel file ----------------
+with pd.ExcelWriter("timetable_full.xlsx", engine="openpyxl") as writer:
+    generate_timetable(courses_first_half, writer, sheet_name="First_Half")
+    generate_timetable(courses_second_half, writer, sheet_name="Second_Half")
