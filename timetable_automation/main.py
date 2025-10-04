@@ -18,9 +18,15 @@ batches_list = [
     for _, row in batches_df.iterrows()
 ]
 courses_list = [
-    Course(row['Department'], row['Semester'], row['Course Code'], row['Course Name'], row['L-T-P-S-C'], row['Faculty'])
+    Course(
+        row['Department'], row['Semester'],
+        row['Course Code'], row['Course Name'],
+        row['L'], row['T'], row['P'], row['S'], row['C'],
+        row['Faculty']
+    )
     for _, row in courses_df.iterrows()
 ]
+
 faculty_list = [
     Faculty(row['Faculty ID'], row['Name'])
     for _, row in faculty_df.iterrows()
