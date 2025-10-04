@@ -17,22 +17,18 @@ batches_list = [
     Batch(row['Department'], row['Semester'], row['Total_Students'], row['MaxBatchSize'])
     for _, row in batches_df.iterrows()
 ]
-
 courses_list = [
     Course(row['Department'], row['Semester'], row['Course Code'], row['Course Name'], row['L-T-P-S-C'], row['Faculty'])
     for _, row in courses_df.iterrows()
 ]
-
 faculty_list = [
     Faculty(row['Faculty ID'], row['Name'])
     for _, row in faculty_df.iterrows()
 ]
-
 rooms_list = [
     Room(row['Room ID'], row['Capacity'], row['Type'], row['Facilities'])
     for _, row in rooms_df.iterrows()
 ]
-
 timeslots_list = [
     TimeSlot(row['Slot_ID'], row['Day'], row['Start_Time'], row['End_Time'])
     for _, row in timeslots_df.iterrows()
@@ -57,13 +53,11 @@ def book_slot(slot_id, faculty_id, room_id, batch_department):
 schedule = []
 for course in courses_list:
     assigned = False
-    # Find matching batch object by department
     batch = next((b for b in batches_list if b.department == course.department and b.semester == course.semester), None)
     if batch is None:
         print(f"No batch found for {course.department} Semester {course.semester}")
         continue
     batch_size = batch.max_batch_size
-    # Find faculty by name
     faculty_obj = next((f for f in faculty_list if f.name == course.faculty), None)
     if faculty_obj is None:
         print(f"No faculty found for {course.faculty}")
@@ -71,11 +65,9 @@ for course in courses_list:
     faculty_id = faculty_obj.faculty_id
     for slot in timeslots_list:
         for room in rooms_list:
-            # Room capacity and type check (Lab/Class/Other), you may refine as needed
             if room.capacity == '-' or room.capacity == '':
                 continue
             if int(room.capacity) >= int(batch_size):
-                # Room type match (optional, modify logic as needed)
                 if is_slot_free(slot.slot_id, faculty_id, room.room_id, batch.department):
                     book_slot(slot.slot_id, faculty_id, room.room_id, batch.department)
                     schedule.append({
@@ -100,21 +92,17 @@ for course in courses_list:
     if not assigned:
         print(f"Could not assign slot for {course.course_code} ({course.course_name}) in {course.department} Sem {course.semester}")
 
-# Export schedule as CSV
+# Build DataFrame and pivot timetable to all days grid
 schedule_df = pd.DataFrame(schedule)
-# Pivot timetable to have days as columns and time slots as rows
 pivot_df = schedule_df.pivot_table(
-    index=['Slot_ID', 'Start_Time', 'End_Time'], 
-    columns='Day', 
-    values=['Course Code', 'Room ID', 'Faculty'], 
-    aggfunc='first', 
+    index=['Slot_ID', 'Start_Time', 'End_Time'],
+    columns='Day',
+    values=['Course Code', 'Faculty', 'Room ID'],
+    aggfunc='first',
     fill_value=''
 )
-
-# Flatten the multi-level columns for easier reading
 pivot_df.columns = ['_'.join(col).strip() for col in pivot_df.columns.values]
-
-# Sort by Slot_ID to ensure chronological order
-pivot_df = pivot_df.sort_index()
+pivot_df = pivot_df.reset_index().sort_values('Slot_ID')
 
 print(pivot_df)
+pivot_df.to_csv("data/timetable_full_week.csv", index=False)
