@@ -1,5 +1,6 @@
-class Student:
-    def __init__(self, student_id, name, department):
-        self.student_id = student_id
-        self.name = name
-        self.department = department
+class Batch:
+    def __init__(self, id, year, section, size):
+        self.id = id
+        self.year = year
+        self.section = section
+        self.size = size
