@@ -1,1 +1,4 @@
-
+Department,Semester,Total_Students,MaxBatchSize
+CSE,3,170,85
+DSAI,3,88,88
+ECE,3,65,65
