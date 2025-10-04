@@ -2,11 +2,11 @@ import pandas as pd
 from timetable_automation.models.faculty import Faculty
 from timetable_automation.models.course import Course
 from timetable_automation.models.room import Room
-from timetable_automation.models.batch import Batch
-from timetable_automation.models.timeslot import TimeSlot
+from timetable_automation.models.batches import Batch
+from timetable_automation.models.timeslots import TimeSlot
 
 # Load CSV data from data/ directory
-faculty_df = pd.read_csv('data/faculty.csv')
+faculty_df = pd.read_csv('data/Faculty.csv')
 courses_df = pd.read_csv('data/courses.csv')
 batches_df = pd.read_csv('data/batches.csv')
 rooms_df = pd.read_csv('data/rooms.csv')
