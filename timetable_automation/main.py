@@ -43,8 +43,8 @@ def assign_slots(course, n_blocks, label):
     count = 0
     for day in days:
         for slot in slot_day_mapping.get(day, []):
-            # Ensure slot label matches *and* lookup is for exactly one cell
-            if (slot in timetable.columns) and (timetable.loc[day, slot] == ''):
+            slot = slot.strip()
+            if slot in timetable.columns and timetable.loc[day, slot] == '':
                 timetable.loc[day, slot] = f"{course.course_code}-{label}"
                 count += 1
                 if count == int(n_blocks):
