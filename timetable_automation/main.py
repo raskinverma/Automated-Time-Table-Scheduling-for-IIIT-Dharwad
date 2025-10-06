@@ -3,7 +3,11 @@ import random
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment, Border, Side
 
+# ---------------- Fix random seed for reproducibility ----------------
+RANDOM_SEED = 42
+random.seed(RANDOM_SEED)
 
+# ---------------- Course Class ----------------
 class Course:
     def __init__(self, row):
         self.code = str(row["Course_Code"]).strip()
@@ -17,16 +21,14 @@ class Course:
         except:
             self.L, self.T, self.P = 0, 0, 0
 
+# ---------------- Scheduler Class ----------------
 class Scheduler:
     def __init__(self, slots_file, courses_file, rooms_file):
-
         df = pd.read_csv(slots_file)
         self.slots = [f"{row['Start_Time'].strip()}-{row['End_Time'].strip()}" for _, row in df.iterrows()]
         self.slot_durations = {s: self._slot_duration(s) for s in self.slots}
 
-
         self.courses = [Course(row) for _, row in pd.read_csv(courses_file).iterrows()]
-
 
         rooms_df = pd.read_csv(rooms_file)
         self.classrooms = rooms_df[rooms_df["Type"].str.lower() == "classroom"]["Room_ID"].tolist()
@@ -35,7 +37,6 @@ class Scheduler:
         self.days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
         self.excluded_slots = ["07:30-09:00", "13:15-14:00", "17:30-18:30"]
         self.MAX_ATTEMPTS = 10
-
         self.course_room_map = {}
 
     def _slot_duration(self, slot):
@@ -58,7 +59,6 @@ class Scheduler:
         return free_blocks
 
     def _allocate_session(self, timetable, lecturer_busy, labs_scheduled, day, faculty, code, duration_hours, session_type="L", is_elective=False):
-  
         if session_type == "P" and labs_scheduled[day]:
             return False
         
@@ -106,7 +106,7 @@ class Scheduler:
 
                 if faculty:
                     lecturer_busy[day].append(faculty)
-   
+                
                 if session_type == "P":
                     labs_scheduled[day] = True
                     
@@ -116,7 +116,7 @@ class Scheduler:
     def generate_timetable(self, courses_to_allocate, writer, sheet_name):
         timetable = pd.DataFrame("", index=self.days, columns=self.slots)
         lecturer_busy = {day: [] for day in self.days}
-        labs_scheduled = {day: False for day in self.days} 
+        labs_scheduled = {day: False for day in self.days}
         self.course_room_map = {}
 
         electives = [c for c in courses_to_allocate if c.is_elective]
@@ -166,7 +166,6 @@ class Scheduler:
             remaining, attempts = course.P, 0
             while remaining > 0 and attempts < self.MAX_ATTEMPTS:
                 attempts += 1
-        
                 days_without_labs = [d for d in self.days if not labs_scheduled[d]]
                 days_to_try = days_without_labs.copy()
                 random.shuffle(days_to_try)
@@ -189,12 +188,9 @@ class Scheduler:
 
     def run(self, output_file="timetable_full.xlsx"):
         with pd.ExcelWriter(output_file, engine="openpyxl") as writer:
-            self.generate_timetable([c for c in self.courses if c.semester_half in ["1", "0"]],
-                                    writer, "First_Half")
-            self.generate_timetable([c for c in self.courses if c.semester_half in ["2", "0"]],
-                                    writer, "Second_Half")
+            self.generate_timetable([c for c in self.courses if c.semester_half in ["1", "0"]], writer, "First_Half")
+            self.generate_timetable([c for c in self.courses if c.semester_half in ["2", "0"]], writer, "Second_Half")
 
-     
         wb = load_workbook(output_file)
         for default in ["Sheet", "Sheet1"]:
             if default in wb.sheetnames:
@@ -205,10 +201,8 @@ class Scheduler:
 
     def format_excel(self, filename):
         wb = load_workbook(filename)
-        thin_border = Border(left=Side(style='thin'),
-                             right=Side(style='thin'),
-                             top=Side(style='thin'),
-                             bottom=Side(style='thin'))
+        thin_border = Border(left=Side(style='thin'), right=Side(style='thin'),
+                             top=Side(style='thin'), bottom=Side(style='thin'))
 
         for sheet_name in wb.sheetnames:
             ws = wb[sheet_name]
@@ -242,7 +236,7 @@ class Scheduler:
         wb.save(filename)
         print(f"Formatted timetable with borders saved in {filename}")
 
-
+# ---------------- Run ----------------
 if __name__ == "__main__":
     scheduler = Scheduler("data/timeslots.csv", "data/courses.csv", "data/rooms.csv")
     scheduler.run("timetable_full.xlsx")
