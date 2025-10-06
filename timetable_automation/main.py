@@ -3,7 +3,6 @@ import random
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment, Border, Side
 
-
 RANDOM_SEED = 42
 random.seed(RANDOM_SEED)
 
@@ -236,6 +235,16 @@ class Scheduler:
         wb.save(filename)
         print(f"Formatted timetable with borders saved in {filename}")
 
+
 if __name__ == "__main__":
-    scheduler = Scheduler("data/timeslots.csv", "data/courses.csv", "data/rooms.csv")
-    scheduler.run("timetable_full.xlsx")
+    departments = {
+        "CSE": "data/CSE_courses.csv",
+        "DSAI": "data/CSE_courses.csv",
+    }
+    rooms_file = "data/rooms.csv"
+    slots_file = "data/timeslots.csv"
+
+    for dept_name, course_file in departments.items():
+        print(f"\nGenerating timetable for {dept_name}...")
+        scheduler = Scheduler(slots_file, course_file, rooms_file)
+        scheduler.run(f"{dept_name}_timetable.xlsx")
