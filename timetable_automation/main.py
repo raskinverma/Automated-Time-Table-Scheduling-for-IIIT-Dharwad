@@ -34,7 +34,7 @@ class Scheduler:
         self.labs = rooms_df[rooms_df["Type"].str.lower() == "lab"]["Room_ID"].tolist()
 
         self.days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-        self.excluded_slots = ["07:30-09:00", "13:15-14:00", "17:30-18:30"]
+        self.excluded_slots = ["07:30-09:00","10:30-10:45", "13:15-14:00", "17:30-18:30"]
         self.MAX_ATTEMPTS = 10
         self.course_room_map = {}
         self.global_room_usage = global_room_usage  # shared across departments
@@ -75,7 +75,6 @@ class Scheduler:
                     if dur_accum >= duration_hours:
                         break
 
-                # Room allocation (avoid global conflicts)
                 if not is_elective:
                     if code in self.course_room_map:
                         room = self.course_room_map[code]
@@ -94,13 +93,11 @@ class Scheduler:
                         room = random.choice(available_rooms)
                         self.course_room_map[code] = room
 
-                    # mark globally used
                     for s in slots_to_use:
                         self.global_room_usage.setdefault(day, {}).setdefault(s, []).append(room)
                 else:
                     room = ""
 
-                # fill cells
                 for i, s in enumerate(slots_to_use):
                     if session_type == "L":
                         timetable.at[day, s] = f"{code} ({room})" if not is_elective else code
@@ -217,7 +214,6 @@ class Scheduler:
 
         wb = load_workbook(output_file)
 
-        # ✅ Safe sheet removal fix
         for default in ["Sheet", "Sheet1"]:
             if default in wb.sheetnames and len(wb.sheetnames) > 1:
                 wb.remove(wb[default])
@@ -235,18 +231,22 @@ class Scheduler:
         )
 
         color_map = {}
-        palette = ["FFC7CE", "C6EFCE", "FFEB9C", "BDD7EE", "D9EAD3", "F4CCCC", "D9D2E9", "FCE5CD"]
+        faculty_map = {}
+        palette = ["FFC7CE", "C6EFCE", "FFEB9C", "BDD7EE", "D9EAD3", "F4CCCC", "D9D2E9", "FCE5CD", "C9DAF8", "EAD1DC"]
         color_index = 0
 
         for sheet_name in wb.sheetnames:
             ws = wb[sheet_name]
 
+            # format timetable & collect color mapping
             for row in range(2, ws.max_row + 1):
                 start_col = 2
                 while start_col <= ws.max_column:
                     cell = ws.cell(row=row, column=start_col)
                     if cell.value and cell.value != "FREE":
-                        code = cell.value.split(" ")[0]
+                        raw_code = cell.value.split(" ")[0]
+                        # normalize code for legend: remove trailing T for tutorials
+                        code = raw_code.rstrip("T")
                         if code not in color_map:
                             color_map[code] = palette[color_index % len(palette)]
                             color_index += 1
@@ -254,8 +254,9 @@ class Scheduler:
                         cell.fill = fill
                         merge_count = 0
                         for col in range(start_col + 1, ws.max_column + 1):
-                            if ws.cell(row=row, column=col).value == cell.value:
-                                ws.cell(row=row, column=col).fill = fill
+                            next_cell = ws.cell(row=row, column=col)
+                            if next_cell.value == cell.value:
+                                next_cell.fill = fill
                                 merge_count += 1
                             else:
                                 break
@@ -271,12 +272,24 @@ class Scheduler:
                         cell.border = thin_border
                         start_col += 1
 
-            for col in range(1, ws.max_column + 1):
-                ws.cell(row=1, column=col).alignment = Alignment(horizontal="center", vertical="center")
-                ws.cell(row=1, column=col).border = thin_border
+            # build legend below timetable
+            start_row = ws.max_row + 3
+            ws.cell(start_row, 2, "Course Code").border = thin_border
+            ws.cell(start_row, 3, "Faculty").border = thin_border
+            ws.cell(start_row, 4, "Color").border = thin_border
+            ws.cell(start_row, 2).alignment = ws.cell(start_row, 3).alignment = ws.cell(
+                start_row, 4
+            ).alignment = Alignment(horizontal="center", vertical="center")
+
+            for i, code in enumerate(color_map, start=1):
+                ws.cell(start_row + i, 2, code).border = thin_border
+                faculty = next((c.faculty for c in self.courses if c.code == code), "")
+                ws.cell(start_row + i, 3, faculty).border = thin_border
+                ws.cell(start_row + i, 4, "").fill = PatternFill(start_color=color_map[code], end_color=color_map[code], fill_type="solid")
+                ws.cell(start_row + i, 4).border = thin_border
 
         wb.save(filename)
-        print(f"Formatted timetable {filename}")
+        print(f"Formatted timetable with borders, colors, and legend saved in {filename}")
 
 
 if __name__ == "__main__":
