@@ -4,7 +4,6 @@ from openpyxl import load_workbook
 from openpyxl.styles import Alignment, Border, Side
 
 
-# ---------------- Course Class ----------------
 class Course:
     def __init__(self, row):
         self.code = str(row["Course_Code"]).strip()
@@ -18,24 +17,21 @@ class Course:
         except:
             self.L, self.T, self.P = 0, 0, 0
 
-
-# ---------------- Scheduler Class ----------------
 class Scheduler:
     def __init__(self, slots_file, courses_file, rooms_file):
-        # Load time slots
+
         df = pd.read_csv(slots_file)
         self.slots = [f"{row['Start_Time'].strip()}-{row['End_Time'].strip()}" for _, row in df.iterrows()]
         self.slot_durations = {s: self._slot_duration(s) for s in self.slots}
 
-        # Load courses
+
         self.courses = [Course(row) for _, row in pd.read_csv(courses_file).iterrows()]
 
-        # Load rooms
+
         rooms_df = pd.read_csv(rooms_file)
         self.classrooms = rooms_df[rooms_df["Type"].str.lower() == "classroom"]["Room_ID"].tolist()
         self.labs = rooms_df[rooms_df["Type"].str.lower() == "lab"]["Room_ID"].tolist()
 
-        # Constants
         self.days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
         self.excluded_slots = ["07:30-09:00", "13:15-14:00", "17:30-18:30"]
         self.MAX_ATTEMPTS = 10
@@ -62,7 +58,7 @@ class Scheduler:
         return free_blocks
 
     def _allocate_session(self, timetable, lecturer_busy, labs_scheduled, day, faculty, code, duration_hours, session_type="L", is_elective=False):
-        # Check if this is a lab session and if a lab is already scheduled for this day
+  
         if session_type == "P" and labs_scheduled[day]:
             return False
         
@@ -101,7 +97,6 @@ class Scheduler:
                     elif session_type == "P":
                         timetable.at[day, s] = f"{code} (Lab-{room})" if not is_elective else code
 
-                    # Fill gap slots (like 15-min breaks)
                     if i < len(slots_to_use) - 1:
                         idx = self.slots.index(s)
                         if idx + 1 < len(self.slots):
@@ -111,8 +106,7 @@ class Scheduler:
 
                 if faculty:
                     lecturer_busy[day].append(faculty)
-                
-                # Mark that a lab has been scheduled for this day
+   
                 if session_type == "P":
                     labs_scheduled[day] = True
                     
@@ -122,13 +116,12 @@ class Scheduler:
     def generate_timetable(self, courses_to_allocate, writer, sheet_name):
         timetable = pd.DataFrame("", index=self.days, columns=self.slots)
         lecturer_busy = {day: [] for day in self.days}
-        labs_scheduled = {day: False for day in self.days}  # Track lab sessions per day
+        labs_scheduled = {day: False for day in self.days} 
         self.course_room_map = {}
 
         electives = [c for c in courses_to_allocate if c.is_elective]
         non_electives = [c for c in courses_to_allocate if not c.is_elective]
 
-        # Pick one elective placeholder
         if electives:
             chosen = random.choice(electives)
             elective_course = Course({
@@ -140,13 +133,11 @@ class Scheduler:
             })
             non_electives.append(elective_course)
 
-        # Shuffle courses to avoid bias in scheduling order
         random.shuffle(non_electives)
         
         for course in non_electives:
             faculty, code, is_elective = course.faculty, course.code, course.code == "Elective"
 
-            # Lectures - try days in random order for better distribution
             remaining, attempts = course.L, 0
             while remaining > 0 and attempts < self.MAX_ATTEMPTS:
                 attempts += 1
@@ -160,7 +151,6 @@ class Scheduler:
                         remaining -= alloc
                         break
 
-            # Tutorials - try days in random order
             remaining, attempts = course.T, 0
             while remaining > 0 and attempts < self.MAX_ATTEMPTS:
                 attempts += 1
@@ -173,11 +163,10 @@ class Scheduler:
                         remaining -= 1
                         break
 
-            # Practicals - prioritize days without labs first
             remaining, attempts = course.P, 0
             while remaining > 0 and attempts < self.MAX_ATTEMPTS:
                 attempts += 1
-                # Prioritize days without labs
+        
                 days_without_labs = [d for d in self.days if not labs_scheduled[d]]
                 days_to_try = days_without_labs.copy()
                 random.shuffle(days_to_try)
@@ -190,7 +179,6 @@ class Scheduler:
                         remaining -= alloc
                         break
 
-        # Clear excluded slots
         for day in self.days:
             for slot in self.excluded_slots:
                 if slot in timetable.columns:
@@ -206,7 +194,7 @@ class Scheduler:
             self.generate_timetable([c for c in self.courses if c.semester_half in ["2", "0"]],
                                     writer, "Second_Half")
 
-        # Remove default sheet (Sheet/Sheet1)
+     
         wb = load_workbook(output_file)
         for default in ["Sheet", "Sheet1"]:
             if default in wb.sheetnames:
@@ -247,7 +235,6 @@ class Scheduler:
                         cell.border = thin_border
                         start_col += 1
 
-            # Format headers
             for col in range(1, ws.max_column + 1):
                 ws.cell(row=1, column=col).alignment = Alignment(horizontal="center", vertical="center")
                 ws.cell(row=1, column=col).border = thin_border
@@ -256,7 +243,6 @@ class Scheduler:
         print(f"Formatted timetable with borders saved in {filename}")
 
 
-# ---------------- Run ----------------
 if __name__ == "__main__":
     scheduler = Scheduler("data/timeslots.csv", "data/courses.csv", "data/rooms.csv")
     scheduler.run("timetable_full.xlsx")
