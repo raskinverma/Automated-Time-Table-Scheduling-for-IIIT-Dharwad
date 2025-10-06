@@ -1,7 +1,7 @@
 import pandas as pd
 import random
 from openpyxl import load_workbook
-from openpyxl.styles import Alignment, Border, Side
+from openpyxl.styles import Alignment, Border, Side, PatternFill
 
 RANDOM_SEED = 42
 random.seed(RANDOM_SEED)
@@ -22,7 +22,7 @@ class Course:
 
 
 class Scheduler:
-    def __init__(self, slots_file, courses_file, rooms_file):
+    def __init__(self, slots_file, courses_file, rooms_file, global_room_usage):
         df = pd.read_csv(slots_file)
         self.slots = [f"{row['Start_Time'].strip()}-{row['End_Time'].strip()}" for _, row in df.iterrows()]
         self.slot_durations = {s: self._slot_duration(s) for s in self.slots}
@@ -37,6 +37,7 @@ class Scheduler:
         self.excluded_slots = ["07:30-09:00", "13:15-14:00", "17:30-18:30"]
         self.MAX_ATTEMPTS = 10
         self.course_room_map = {}
+        self.global_room_usage = global_room_usage  # shared across departments
 
     def _slot_duration(self, slot):
         start, end = slot.split("-")
@@ -57,10 +58,12 @@ class Scheduler:
             free_blocks.append(block)
         return free_blocks
 
-    def _allocate_session(self, timetable, lecturer_busy, labs_scheduled, day, faculty, code, duration_hours, session_type="L", is_elective=False):
+    def _allocate_session(
+        self, timetable, lecturer_busy, labs_scheduled, day, faculty, code, duration_hours, session_type="L", is_elective=False
+    ):
         if session_type == "P" and labs_scheduled[day]:
             return False
-        
+
         free_blocks = self._get_free_blocks(timetable, day)
         for block in free_blocks:
             total = sum(self.slot_durations[s] for s in block)
@@ -72,22 +75,32 @@ class Scheduler:
                     if dur_accum >= duration_hours:
                         break
 
+                # Room allocation (avoid global conflicts)
                 if not is_elective:
                     if code in self.course_room_map:
                         room = self.course_room_map[code]
                     else:
-                        if session_type == "P":
-                            if not self.labs:
-                                print(f"No labs available for {code}")
-                                return False
-                            room = random.choice(self.labs)
-                        else:
-                            if not self.classrooms:
-                                print(f"No classrooms available for {code}")
-                                return False
-                            room = random.choice(self.classrooms)
+                        possible_rooms = self.labs if session_type == "P" else self.classrooms
+                        available_rooms = [
+                            r
+                            for r in possible_rooms
+                            if all(
+                                r not in self.global_room_usage.get(day, {}).get(s, [])
+                                for s in slots_to_use
+                            )
+                        ]
+                        if not available_rooms:
+                            return False
+                        room = random.choice(available_rooms)
                         self.course_room_map[code] = room
 
+                    # mark globally used
+                    for s in slots_to_use:
+                        self.global_room_usage.setdefault(day, {}).setdefault(s, []).append(room)
+                else:
+                    room = ""
+
+                # fill cells
                 for i, s in enumerate(slots_to_use):
                     if session_type == "L":
                         timetable.at[day, s] = f"{code} ({room})" if not is_elective else code
@@ -105,10 +118,10 @@ class Scheduler:
 
                 if faculty:
                     lecturer_busy[day].append(faculty)
-                
+
                 if session_type == "P":
                     labs_scheduled[day] = True
-                    
+
                 return True
         return False
 
@@ -123,17 +136,19 @@ class Scheduler:
 
         if electives:
             chosen = random.choice(electives)
-            elective_course = Course({
-                "Course_Code": "Elective",
-                "Faculty": chosen.faculty,
-                "L-T-P-S-C": chosen.ltp,
-                "Semester_Half": chosen.semester_half,
-                "Elective": 0
-            })
+            elective_course = Course(
+                {
+                    "Course_Code": "Elective",
+                    "Faculty": chosen.faculty,
+                    "L-T-P-S-C": chosen.ltp,
+                    "Semester_Half": chosen.semester_half,
+                    "Elective": 0,
+                }
+            )
             non_electives.append(elective_course)
 
         random.shuffle(non_electives)
-        
+
         for course in non_electives:
             faculty, code, is_elective = course.faculty, course.code, course.code == "Elective"
 
@@ -146,7 +161,9 @@ class Scheduler:
                     if remaining <= 0 or (faculty and faculty in lecturer_busy[day]):
                         continue
                     alloc = min(1.5, remaining)
-                    if self._allocate_session(timetable, lecturer_busy, labs_scheduled, day, faculty, code, alloc, "L", is_elective):
+                    if self._allocate_session(
+                        timetable, lecturer_busy, labs_scheduled, day, faculty, code, alloc, "L", is_elective
+                    ):
                         remaining -= alloc
                         break
 
@@ -158,7 +175,9 @@ class Scheduler:
                 for day in days_to_try:
                     if remaining <= 0 or (faculty and faculty in lecturer_busy[day]):
                         continue
-                    if self._allocate_session(timetable, lecturer_busy, labs_scheduled, day, faculty, code, 1, "T", is_elective):
+                    if self._allocate_session(
+                        timetable, lecturer_busy, labs_scheduled, day, faculty, code, 1, "T", is_elective
+                    ):
                         remaining -= 1
                         break
 
@@ -168,12 +187,14 @@ class Scheduler:
                 days_without_labs = [d for d in self.days if not labs_scheduled[d]]
                 days_to_try = days_without_labs.copy()
                 random.shuffle(days_to_try)
-                
+
                 for day in days_to_try:
                     if remaining <= 0 or (faculty and faculty in lecturer_busy[day]):
                         continue
                     alloc = min(2, remaining) if remaining >= 2 else remaining
-                    if self._allocate_session(timetable, lecturer_busy, labs_scheduled, day, faculty, code, alloc, "P", is_elective):
+                    if self._allocate_session(
+                        timetable, lecturer_busy, labs_scheduled, day, faculty, code, alloc, "P", is_elective
+                    ):
                         remaining -= alloc
                         break
 
@@ -187,21 +208,35 @@ class Scheduler:
 
     def run(self, output_file="timetable_full.xlsx"):
         with pd.ExcelWriter(output_file, engine="openpyxl") as writer:
-            self.generate_timetable([c for c in self.courses if c.semester_half in ["1", "0"]], writer, "First_Half")
-            self.generate_timetable([c for c in self.courses if c.semester_half in ["2", "0"]], writer, "Second_Half")
+            self.generate_timetable(
+                [c for c in self.courses if c.semester_half in ["1", "0"]], writer, "First_Half"
+            )
+            self.generate_timetable(
+                [c for c in self.courses if c.semester_half in ["2", "0"]], writer, "Second_Half"
+            )
 
         wb = load_workbook(output_file)
-        for default in ["Sheet", "Sheet1"]:
-            if default in wb.sheetnames:
-                wb.remove(wb[default])
-        wb.save(output_file)
 
+        # ✅ Safe sheet removal fix
+        for default in ["Sheet", "Sheet1"]:
+            if default in wb.sheetnames and len(wb.sheetnames) > 1:
+                wb.remove(wb[default])
+
+        wb.save(output_file)
         self.format_excel(output_file)
 
     def format_excel(self, filename):
         wb = load_workbook(filename)
-        thin_border = Border(left=Side(style='thin'), right=Side(style='thin'),
-                             top=Side(style='thin'), bottom=Side(style='thin'))
+        thin_border = Border(
+            left=Side(style="thin"),
+            right=Side(style="thin"),
+            top=Side(style="thin"),
+            bottom=Side(style="thin"),
+        )
+
+        color_map = {}
+        palette = ["FFC7CE", "C6EFCE", "FFEB9C", "BDD7EE", "D9EAD3", "F4CCCC", "D9D2E9", "FCE5CD"]
+        color_index = 0
 
         for sheet_name in wb.sheetnames:
             ws = wb[sheet_name]
@@ -211,15 +246,23 @@ class Scheduler:
                 while start_col <= ws.max_column:
                     cell = ws.cell(row=row, column=start_col)
                     if cell.value and cell.value != "FREE":
+                        code = cell.value.split(" ")[0]
+                        if code not in color_map:
+                            color_map[code] = palette[color_index % len(palette)]
+                            color_index += 1
+                        fill = PatternFill(start_color=color_map[code], end_color=color_map[code], fill_type="solid")
+                        cell.fill = fill
                         merge_count = 0
                         for col in range(start_col + 1, ws.max_column + 1):
                             if ws.cell(row=row, column=col).value == cell.value:
+                                ws.cell(row=row, column=col).fill = fill
                                 merge_count += 1
                             else:
                                 break
                         if merge_count > 0:
-                            ws.merge_cells(start_row=row, start_column=start_col,
-                                           end_row=row, end_column=start_col + merge_count)
+                            ws.merge_cells(
+                                start_row=row, start_column=start_col, end_row=row, end_column=start_col + merge_count
+                            )
                         cell.alignment = Alignment(horizontal="center", vertical="center")
                         for col_idx in range(start_col, start_col + merge_count + 1):
                             ws.cell(row=row, column=col_idx).border = thin_border
@@ -233,7 +276,7 @@ class Scheduler:
                 ws.cell(row=1, column=col).border = thin_border
 
         wb.save(filename)
-        print(f"Formatted timetable with borders saved in {filename}")
+        print(f"Formatted timetable {filename}")
 
 
 if __name__ == "__main__":
@@ -244,7 +287,9 @@ if __name__ == "__main__":
     rooms_file = "data/rooms.csv"
     slots_file = "data/timeslots.csv"
 
+    global_room_usage = {}  # shared room tracker
+
     for dept_name, course_file in departments.items():
         print(f"\nGenerating timetable for {dept_name}...")
-        scheduler = Scheduler(slots_file, course_file, rooms_file)
+        scheduler = Scheduler(slots_file, course_file, rooms_file, global_room_usage)
         scheduler.run(f"{dept_name}_timetable.xlsx")
