@@ -239,7 +239,7 @@ class Scheduler:
 if __name__ == "__main__":
     departments = {
         "CSE": "data/CSE_courses.csv",
-        "DSAI": "data/CSE_courses.csv",
+        "DSAI": "data/DSAI_courses.csv",
     }
     rooms_file = "data/rooms.csv"
     slots_file = "data/timeslots.csv"
