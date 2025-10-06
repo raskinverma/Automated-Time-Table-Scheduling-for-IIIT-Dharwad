@@ -2,6 +2,7 @@ import pandas as pd
 import random
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment, Border, Side, PatternFill
+from openpyxl.utils import get_column_letter
 
 RANDOM_SEED = 42
 random.seed(RANDOM_SEED)
@@ -14,6 +15,7 @@ class Course:
         self.ltp = str(row["L-T-P-S-C"]).strip()
         self.semester_half = str(row.get("Semester_Half", "0")).strip()
         self.is_elective = str(row.get("Elective", 0)).strip() == "1"
+        self.class_name = str(row.get("Class", "")).strip()
 
         try:
             self.L, self.T, self.P, self.S, self.C = map(int, self.ltp.split("-"))
@@ -34,10 +36,10 @@ class Scheduler:
         self.labs = rooms_df[rooms_df["Type"].str.lower() == "lab"]["Room_ID"].tolist()
 
         self.days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-        self.excluded_slots = ["07:30-09:00","10:30-10:45", "13:15-14:00", "17:30-18:30"]
+        self.excluded_slots = ["07:30-09:00", "13:15-14:00", "17:30-18:30"]
         self.MAX_ATTEMPTS = 10
         self.course_room_map = {}
-        self.global_room_usage = global_room_usage  # shared across departments
+        self.global_room_usage = global_room_usage
 
     def _slot_duration(self, slot):
         start, end = slot.split("-")
@@ -100,11 +102,11 @@ class Scheduler:
 
                 for i, s in enumerate(slots_to_use):
                     if session_type == "L":
-                        timetable.at[day, s] = f"{code} ({room})" if not is_elective else code
+                        timetable.at[day, s] = f"{code} ({room})" if not is_elective else "Elective"
                     elif session_type == "T":
-                        timetable.at[day, s] = f"{code}T ({room})" if not is_elective else f"{code}T"
+                        timetable.at[day, s] = f"{code}T ({room})" if not is_elective else "Elective"
                     elif session_type == "P":
-                        timetable.at[day, s] = f"{code} (Lab-{room})" if not is_elective else code
+                        timetable.at[day, s] = f"{code} (Lab-{room})" if not is_elective else "Elective"
 
                     if i < len(slots_to_use) - 1:
                         idx = self.slots.index(s)
@@ -131,6 +133,14 @@ class Scheduler:
         electives = [c for c in courses_to_allocate if c.is_elective]
         non_electives = [c for c in courses_to_allocate if not c.is_elective]
 
+        elective_info = []
+        for c in electives:
+            elective_info.append({
+                "code": c.code,
+                "faculty": c.faculty,
+                "class": c.class_name
+            })
+
         if electives:
             chosen = random.choice(electives)
             elective_course = Course(
@@ -140,6 +150,7 @@ class Scheduler:
                     "L-T-P-S-C": chosen.ltp,
                     "Semester_Half": chosen.semester_half,
                     "Elective": 0,
+                    "Class": chosen.class_name
                 }
             )
             non_electives.append(elective_course)
@@ -202,26 +213,26 @@ class Scheduler:
 
         timetable.to_excel(writer, sheet_name=sheet_name, index=True)
         print(f"Saved timetable to sheet '{sheet_name}'")
+        return elective_info
 
     def run(self, output_file="timetable_full.xlsx"):
+        all_electives_info = {}
         with pd.ExcelWriter(output_file, engine="openpyxl") as writer:
-            self.generate_timetable(
+            all_electives_info["First_Half"] = self.generate_timetable(
                 [c for c in self.courses if c.semester_half in ["1", "0"]], writer, "First_Half"
             )
-            self.generate_timetable(
+            all_electives_info["Second_Half"] = self.generate_timetable(
                 [c for c in self.courses if c.semester_half in ["2", "0"]], writer, "Second_Half"
             )
 
         wb = load_workbook(output_file)
-
         for default in ["Sheet", "Sheet1"]:
             if default in wb.sheetnames and len(wb.sheetnames) > 1:
                 wb.remove(wb[default])
-
         wb.save(output_file)
-        self.format_excel(output_file)
+        self.format_excel(output_file, all_electives_info)
 
-    def format_excel(self, filename):
+    def format_excel(self, filename, all_electives_info):
         wb = load_workbook(filename)
         thin_border = Border(
             left=Side(style="thin"),
@@ -231,26 +242,28 @@ class Scheduler:
         )
 
         color_map = {}
-        faculty_map = {}
         palette = ["FFC7CE", "C6EFCE", "FFEB9C", "BDD7EE", "D9EAD3", "F4CCCC", "D9D2E9", "FCE5CD", "C9DAF8", "EAD1DC"]
         color_index = 0
+        elective_color = "FFD966"
 
         for sheet_name in wb.sheetnames:
             ws = wb[sheet_name]
 
-            # format timetable & collect color mapping
             for row in range(2, ws.max_row + 1):
                 start_col = 2
                 while start_col <= ws.max_column:
                     cell = ws.cell(row=row, column=start_col)
                     if cell.value and cell.value != "FREE":
                         raw_code = cell.value.split(" ")[0]
-                        # normalize code for legend: remove trailing T for tutorials
                         code = raw_code.rstrip("T")
-                        if code not in color_map:
+                        if code != "Elective" and code not in color_map:
                             color_map[code] = palette[color_index % len(palette)]
                             color_index += 1
-                        fill = PatternFill(start_color=color_map[code], end_color=color_map[code], fill_type="solid")
+                        fill = PatternFill(
+                            start_color=color_map.get(code, elective_color),
+                            end_color=color_map.get(code, elective_color),
+                            fill_type="solid"
+                        )
                         cell.fill = fill
                         merge_count = 0
                         for col in range(start_col + 1, ws.max_column + 1):
@@ -272,7 +285,7 @@ class Scheduler:
                         cell.border = thin_border
                         start_col += 1
 
-            # build legend below timetable
+            # Legend
             start_row = ws.max_row + 3
             ws.cell(start_row, 2, "Course Code").border = thin_border
             ws.cell(start_row, 3, "Faculty").border = thin_border
@@ -288,8 +301,30 @@ class Scheduler:
                 ws.cell(start_row + i, 4, "").fill = PatternFill(start_color=color_map[code], end_color=color_map[code], fill_type="solid")
                 ws.cell(start_row + i, 4).border = thin_border
 
+            # Grouped Electives
+            ws.cell(start_row + len(color_map) + 2, 2, "Electives").border = thin_border
+            ws.cell(start_row + len(color_map) + 2, 4, "").fill = PatternFill(start_color=elective_color, end_color=elective_color, fill_type="solid")
+            ws.cell(start_row + len(color_map) + 2, 2).alignment = Alignment(horizontal="center")
+            ws.cell(start_row + len(color_map) + 2, 4).border = thin_border
+
+            elective_info = all_electives_info.get(sheet_name, [])
+            for j, info in enumerate(elective_info, start=1):
+                ws.cell(start_row + len(color_map) + 2 + j, 2, info["code"]).border = thin_border
+                ws.cell(start_row + len(color_map) + 2 + j, 3, info["faculty"]).border = thin_border
+                ws.cell(start_row + len(color_map) + 2 + j, 4, info["class"]).border = thin_border
+
+            # ---------- AUTO COLUMN WIDTH ----------
+            for col in ws.columns:
+                max_length = 0
+                column = col[0].column
+                column_letter = get_column_letter(column)
+                for cell in col:
+                    if cell.value:
+                        max_length = max(max_length, len(str(cell.value)))
+                ws.column_dimensions[column_letter].width = max_length + 2
+
         wb.save(filename)
-        print(f"Formatted timetable with borders, colors, and legend saved in {filename}")
+        print(f"Formatted timetable with borders, colors, grouped electives, and auto column widths saved in {filename}")
 
 
 if __name__ == "__main__":
@@ -300,7 +335,7 @@ if __name__ == "__main__":
     rooms_file = "data/rooms.csv"
     slots_file = "data/timeslots.csv"
 
-    global_room_usage = {}  # shared room tracker
+    global_room_usage = {}
 
     for dept_name, course_file in departments.items():
         print(f"\nGenerating timetable for {dept_name}...")
