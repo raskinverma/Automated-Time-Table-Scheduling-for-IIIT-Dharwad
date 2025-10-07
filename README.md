@@ -232,3 +232,13 @@ For issues or questions:
 ## License
 
 This timetable generator is provided as-is for educational and administrative use.
+
+## Team Name
+BumbleBee
+
+
+## Team Members
+- Raskin Verma
+- Vishwa D
+- Sindhu Talari
+- Udit Dadhich
