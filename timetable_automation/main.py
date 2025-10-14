@@ -528,6 +528,7 @@ class Scheduler:
         print(f"Saved faculty timetables to {faculty_filename} (with colors and merged cells)")
 
     def run_all_outputs(self, dept_name_prefix="CSE", student_filename=None, faculty_filename="faculty_timetable.xlsx"):
+        
         if not student_filename:
             student_filename = f"{dept_name_prefix}_timetable.xlsx"
 
