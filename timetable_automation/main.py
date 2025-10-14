@@ -151,10 +151,6 @@ class Scheduler:
         return False
 
     def generate_timetable(self, courses_to_allocate, writer, sheet_name):
-        """
-        Generate a timetable sheet using existing logic. Record electives for the sheet and
-        record scheduled_entries for later faculty and legend processing.
-        """
         timetable = pd.DataFrame("", index=self.days, columns=self.slots)
         lecturer_busy = {day: [] for day in self.days}
         labs_scheduled = {day: False for day in self.days}
@@ -306,10 +302,6 @@ class Scheduler:
         self.elective_room_assignment[sheet_name] = assigned
 
     def format_student_timetable_with_legend(self, filename):
-        """
-        Load the student workbook, compute elective-room assignments (safe, non-invasive),
-        then write legend (per elective room) and format.
-        """
         wb = load_workbook(filename)
         thin_border = Border(
             left=Side(style="thin"),
@@ -536,11 +528,6 @@ class Scheduler:
         print(f"Saved faculty timetables to {faculty_filename} (with colors and merged cells)")
 
     def run_all_outputs(self, dept_name_prefix="CSE", student_filename=None, faculty_filename="faculty_timetable.xlsx"):
-        """
-        High-level runner:
-        - produce student timetable file named exactly '<DEPT>_timetable.xlsx'
-        - produce a combined faculty file named faculty_filename
-        """
         if not student_filename:
             student_filename = f"{dept_name_prefix}_timetable.xlsx"
 
