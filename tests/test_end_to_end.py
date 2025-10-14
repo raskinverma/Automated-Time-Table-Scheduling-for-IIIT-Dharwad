@@ -18,12 +18,12 @@ class TestEndToEnd(unittest.TestCase):
             {"Room_ID": "R2", "Type": "classroom"}
         ])
 
-        slots.to_csv("data/e2e_slots.csv", index=False)
-        courses.to_csv("data/e2e_courses.csv", index=False)
-        rooms.to_csv("data/e2e_rooms.csv", index=False)
+        slots.to_csv("tests/test_data/e2e_slots.csv", index=False)
+        courses.to_csv("tests/test_data/e2e_courses.csv", index=False)
+        rooms.to_csv("tests/test_data/e2e_rooms.csv", index=False)
 
-        sched = Scheduler("data/e2e_slots.csv", "data/e2e_courses.csv", "data/e2e_rooms.csv", {})
-        writer = pd.ExcelWriter("data/test_output.xlsx", engine="openpyxl")
+        sched = Scheduler("tests/test_data/e2e_slots.csv", "tests/test_data/e2e_courses.csv", "tests/test_data/e2e_rooms.csv", {})
+        writer = pd.ExcelWriter("tests/test_data/test_output.xlsx", engine="openpyxl")
         sched.generate_timetable(sched.courses, writer, "TestSheet")
         writer.close()
 
