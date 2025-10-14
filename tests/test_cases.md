@@ -1,4 +1,4 @@
-# 🧪 TEST CASES — Timetable Automation Project
+# TEST CASES — Timetable Automation Project
 
 ---
 
