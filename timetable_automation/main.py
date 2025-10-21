@@ -33,7 +33,7 @@ class Scheduler:
         self.labs = rooms_df[rooms_df["Type"].str.lower() == "lab"]["Room_ID"].tolist()
 
         self.days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-        self.excluded_slots = ["07:30-09:00", "10:30-10:45", "13:15-14:00", "17:30-18:30"]
+        self.excluded_slots = ["07:30-09:00", "10:30-10:45", "13:15-14:00","15:30-15:45", "17:30-18:30"]
         self.MAX_ATTEMPTS = 10
         self.unscheduled_courses = [] 
         self.course_room_map = {}      
@@ -74,7 +74,12 @@ class Scheduler:
         is_elective=False,
         sheet_name=None,
     ):
-
+       
+        for entry in self.scheduled_entries:
+            if entry["day"] == day and entry["code"] == code and entry["sheet"] == sheet_name:
+                return False  
+       
+        
         if session_type == "P" and labs_scheduled[day]:
             return False
 
