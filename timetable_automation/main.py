@@ -35,7 +35,7 @@ class Scheduler:
         self.days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
         self.excluded_slots = ["07:30-09:00", "10:30-10:45", "13:15-14:00", "17:30-18:30"]
         self.MAX_ATTEMPTS = 10
-
+        self.unscheduled_courses = [] 
         self.course_room_map = {}      
         self.global_room_usage = global_room_usage 
         self.scheduled_entries = []  
@@ -74,7 +74,7 @@ class Scheduler:
         is_elective=False,
         sheet_name=None,
     ):
-        
+
         if session_type == "P" and labs_scheduled[day]:
             return False
 
@@ -89,7 +89,13 @@ class Scheduler:
                     if dur_accum >= duration_hours:
                         break
 
-                
+        
+                if faculty:
+                    busy = any(faculty in lecturer_busy[day][s] for s in slots_to_use)
+                    if busy:
+                        continue  
+
+               
                 if not is_elective:
                     if code in self.course_room_map:
                         room = self.course_room_map[code]
@@ -104,13 +110,14 @@ class Scheduler:
                             return False
                         room = random.choice(available_rooms)
                         self.course_room_map[code] = room
-                    
+
+                   
                     for s in slots_to_use:
                         self.global_room_usage.setdefault(day, {}).setdefault(s, []).append(room)
                 else:
                     room = ""
 
-                
+              
                 for i, s in enumerate(slots_to_use):
                     if session_type == "L":
                         display_text = f"{code} ({room})" if (room and not is_elective) else code
@@ -143,26 +150,31 @@ class Scheduler:
                             if timetable.at[day, gap_slot] == "" and self.slot_durations[gap_slot] == 0.25:
                                 timetable.at[day, gap_slot] = "FREE"
 
+              
                 if faculty:
-                    lecturer_busy[day].append(faculty)
+                    for s in slots_to_use:
+                        lecturer_busy[day][s].append(faculty)
+
+             
                 if session_type == "P":
                     labs_scheduled[day] = True
+
                 return True
+
         return False
+
 
     def generate_timetable(self, courses_to_allocate, writer, sheet_name):
         timetable = pd.DataFrame("", index=self.days, columns=self.slots)
-        lecturer_busy = {day: [] for day in self.days}
+        lecturer_busy = {day: {slot: [] for slot in self.slots} for day in self.days}
         labs_scheduled = {day: False for day in self.days}
         self.course_room_map = {}
 
         electives = [c for c in courses_to_allocate if c.is_elective]
         non_electives = [c for c in courses_to_allocate if not c.is_elective]
 
-        
         self.electives_by_sheet[sheet_name] = electives
 
-        
         if electives:
             chosen = random.choice(electives)
             elective_course = Course(
@@ -182,6 +194,7 @@ class Scheduler:
         for course in non_electives:
             faculty, code, is_elective = course.faculty, course.code, course.code == "Elective"
 
+            
             remaining, attempts = course.L, 0
             while remaining > 0 and attempts < self.MAX_ATTEMPTS:
                 attempts += 1
@@ -197,6 +210,17 @@ class Scheduler:
                         remaining -= alloc
                         break
 
+            if remaining > 0:
+                self.unscheduled_courses.append({
+                    "sheet": sheet_name,
+                    "course_code": code,
+                    "course_title": course.title,
+                    "faculty": faculty,
+                    "type": "Lecture",
+                    "remaining_hours": remaining,
+                    "semester_half": course.semester_half
+                })
+
             remaining, attempts = course.T, 0
             while remaining > 0 and attempts < self.MAX_ATTEMPTS:
                 attempts += 1
@@ -210,6 +234,17 @@ class Scheduler:
                     ):
                         remaining -= 1
                         break
+
+            if remaining > 0:
+                self.unscheduled_courses.append({
+                    "sheet": sheet_name,
+                    "course_code": code,
+                    "course_title": course.title,
+                    "faculty": faculty,
+                    "type": "Tutorial",
+                    "remaining_hours": remaining,
+                    "semester_half": course.semester_half
+                })
 
             remaining, attempts = course.P, 0
             while remaining > 0 and attempts < self.MAX_ATTEMPTS:
@@ -227,7 +262,17 @@ class Scheduler:
                         remaining -= alloc
                         break
 
-       
+            if remaining > 0:
+                self.unscheduled_courses.append({
+                    "sheet": sheet_name,
+                    "course_code": code,
+                    "course_title": course.title,
+                    "faculty": faculty,
+                    "type": "Lab",
+                    "remaining_hours": remaining,
+                    "semester_half": course.semester_half
+                })
+
         for day in self.days:
             for slot in self.excluded_slots:
                 if slot in timetable.columns:
@@ -235,6 +280,7 @@ class Scheduler:
 
         timetable.to_excel(writer, sheet_name=sheet_name, index=True)
         print(f"Saved timetable to sheet '{sheet_name}'")
+
 
     def _compute_elective_room_assignments_legally(self, sheet_name):
         
@@ -321,7 +367,7 @@ class Scheduler:
 
         for sheet_name in wb.sheetnames:
             ws = wb[sheet_name]
-
+            
             for row in range(2, ws.max_row + 1):
                 start_col = 2
                 while start_col <= ws.max_column:
@@ -525,7 +571,7 @@ class Scheduler:
                 ws.column_dimensions[column].width = max_length + 2
 
         wb.save(faculty_filename)
-        print(f"Saved faculty timetables to {faculty_filename} (with colors and merged cells)")
+        print(f"Saved faculty timetables to {faculty_filename}")
 
     def run_all_outputs(self, dept_name_prefix="CSE", student_filename=None, faculty_filename="faculty_timetable.xlsx"):
         
@@ -542,7 +588,10 @@ class Scheduler:
             self.generate_timetable([c for c in self.courses if c.semester_half in ["1", "0"]], writer, "First_Half")
             self.generate_timetable([c for c in self.courses if c.semester_half in ["2", "0"]], writer, "Second_Half")
 
-        
+        if self.unscheduled_courses:
+            unsched_file = f"{dept_name_prefix}_unscheduled_courses.xlsx"
+            pd.DataFrame(self.unscheduled_courses).to_excel(unsched_file, index=False)
+            print(f"⚠️  Some courses couldn't be scheduled. See '{unsched_file}' for details.")
         wb = load_workbook(student_filename)
         for default in ["Sheet", "Sheet1"]:
             if default in wb.sheetnames and len(wb.sheetnames) > 1:
@@ -563,7 +612,8 @@ class Scheduler:
 if __name__ == "__main__":
    
     departments = {
-        "CSE": "data/CSE_courses.csv",
+        "CSE-A": "data/CSE_courses-A.csv",
+        "CSE-B": "data/CSE_courses-B.csv",
         "DSAI": "data/DSAI_courses.csv",
     }
     rooms_file = "data/rooms.csv"
