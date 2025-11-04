@@ -613,7 +613,88 @@ class Scheduler:
         
         self._generate_faculty_workbook(faculty_filename)
 
+class ExamScheduler:
+    def __init__(self, courses_file, rooms_file, exam_days=None):
+        # Load courses and rooms
+        self.courses = pd.read_csv(courses_file)
+        self.rooms = pd.read_csv(rooms_file)
 
+        # Keep only classrooms
+        self.rooms = self.rooms[self.rooms["Type"].str.lower() == "classroom"]
+
+        # ✅ Ensure Capacity is integer
+        if "Capacity" not in self.rooms.columns:
+            raise ValueError("rooms.csv must include a 'Capacity' column for exam scheduling")
+        self.rooms["Capacity"] = pd.to_numeric(self.rooms["Capacity"], errors="coerce").fillna(0).astype(int)
+
+        # ✅ Ensure Students column exists and is integer
+        if "Students" not in self.courses.columns:
+            raise ValueError("courses CSV must include a 'Students' column for exam scheduling")
+        self.courses["Students"] = pd.to_numeric(self.courses["Students"], errors="coerce").fillna(0).astype(int)
+
+        # Set exam days (default = 5 days)
+        if exam_days is None:
+            self.exam_days = [f"Day {i}" for i in range(1, 8)]
+        else:
+            self.exam_days = exam_days
+        self.slots = ["FN", "AN"]
+
+    def generate_exam_timetable(self, output_file="exam_timetable.xlsx"):
+        df = self.courses.sort_values(by="Students", ascending=False).reset_index(drop=True)
+
+        timetable = []
+        room_usage = {day: {"FN": [], "AN": []} for day in self.exam_days}
+
+        day_index, slot_index = 0, 0
+
+        for _, row in df.iterrows():
+            if day_index >= len(self.exam_days):
+                print("⚠️ Ran out of exam days! Add more to the schedule.")
+                break
+
+            day = self.exam_days[day_index]
+            slot = self.slots[slot_index]
+            students = int(row["Students"])
+            assigned_rooms = []
+            remaining = students
+
+            # Sort rooms by capacity descending
+            available_rooms = self.rooms.sort_values(by="Capacity", ascending=False)
+
+            for _, room in available_rooms.iterrows():
+                if remaining <= 0:
+                    break
+                if room["Room_ID"] in room_usage[day][slot]:
+                    continue  # already in use
+                assigned_rooms.append(room["Room_ID"])
+                room_usage[day][slot].append(room["Room_ID"])
+                remaining -= room["Capacity"]
+
+            if remaining > 0:
+                print(f"⚠️ Not enough capacity for {row['Course_Code']} ({students} students). Remaining: {remaining}")
+
+            timetable.append({
+                "Day": day,
+                "Slot": slot,
+                "Course_Code": row["Course_Code"],
+                "Course_Title": row["Course_Title"],
+                "Faculty": row.get("Faculty", ""),
+                "Students": students,
+                "Rooms_Assigned": ", ".join(assigned_rooms)
+            })
+
+            # Move to next slot (FN → AN → next day)
+            slot_index += 1
+            if slot_index >= 2:
+                slot_index = 0
+                day_index += 1
+
+        # Convert to DataFrame and export
+        timetable_df = pd.DataFrame(timetable)
+        timetable_df.to_excel(output_file, index=False)
+        print(f"✅ Exam timetable saved to '{output_file}'")
+
+        return timetable_df
 if __name__ == "__main__":
    
     departments = {
@@ -625,7 +706,11 @@ if __name__ == "__main__":
     }
     rooms_file = "data/rooms.csv"
     slots_file = "data/timeslots.csv"
-
+    print("\nGenerating exam timetable...")
+    exam_scheduler = ExamScheduler("data/CSE_courses-A.csv", "data/rooms.csv")
+    exam_scheduler.generate_exam_timetable("CSE_A_exam_timetable.xlsx")
+    exam_scheduler = ExamScheduler("data/CSE_courses-B.csv", "data/rooms.csv")
+    exam_scheduler.generate_exam_timetable("CSE_B_exam_timetable.xlsx")
     
     global_room_usage = {}
 
