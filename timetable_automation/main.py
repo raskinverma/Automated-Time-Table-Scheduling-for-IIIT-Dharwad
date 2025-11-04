@@ -684,16 +684,16 @@ class ExamScheduler:
 if __name__ == "__main__":
    
     departments = {
-        "CSE-A": "data/CSE_courses-A.csv",
-        "CSE-B": "data/CSE_courses-B.csv",
+        "CSE-A": "data/CSE_3_courses-A.csv",
+        "CSE-B": "data/CSE_3_courses-B.csv",
         
     }
     rooms_file = "data/rooms.csv"
     slots_file = "data/timeslots.csv"
     print("\nGenerating exam timetable...")
-    exam_scheduler = ExamScheduler("data/CSE_courses-A.csv", "data/rooms.csv")
+    exam_scheduler = ExamScheduler("data/CSE_3_courses-A.csv", "data/rooms.csv")
     exam_scheduler.generate_exam_timetable("CSE_A_exam_timetable.xlsx")
-    exam_scheduler = ExamScheduler("data/CSE_courses-B.csv", "data/rooms.csv")
+    exam_scheduler = ExamScheduler("data/CSE_3_courses-B.csv", "data/rooms.csv")
     exam_scheduler.generate_exam_timetable("CSE_B_exam_timetable.xlsx")
     
     global_room_usage = {}
