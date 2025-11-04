@@ -615,24 +615,15 @@ class Scheduler:
 
 class ExamScheduler:
     def __init__(self, courses_file, rooms_file, exam_days=None):
-        # Load courses and rooms
         self.courses = pd.read_csv(courses_file)
         self.rooms = pd.read_csv(rooms_file)
-
-        # Keep only classrooms
         self.rooms = self.rooms[self.rooms["Type"].str.lower() == "classroom"]
-
-        # ✅ Ensure Capacity is integer
         if "Capacity" not in self.rooms.columns:
             raise ValueError("rooms.csv must include a 'Capacity' column for exam scheduling")
         self.rooms["Capacity"] = pd.to_numeric(self.rooms["Capacity"], errors="coerce").fillna(0).astype(int)
-
-        # ✅ Ensure Students column exists and is integer
         if "Students" not in self.courses.columns:
             raise ValueError("courses CSV must include a 'Students' column for exam scheduling")
         self.courses["Students"] = pd.to_numeric(self.courses["Students"], errors="coerce").fillna(0).astype(int)
-
-        # Set exam days (default = 5 days)
         if exam_days is None:
             self.exam_days = [f"Day {i}" for i in range(1, 8)]
         else:
@@ -658,7 +649,6 @@ class ExamScheduler:
             assigned_rooms = []
             remaining = students
 
-            # Sort rooms by capacity descending
             available_rooms = self.rooms.sort_values(by="Capacity", ascending=False)
 
             for _, room in available_rooms.iterrows():
@@ -682,14 +672,10 @@ class ExamScheduler:
                 "Students": students,
                 "Rooms_Assigned": ", ".join(assigned_rooms)
             })
-
-            # Move to next slot (FN → AN → next day)
             slot_index += 1
             if slot_index >= 2:
                 slot_index = 0
                 day_index += 1
-
-        # Convert to DataFrame and export
         timetable_df = pd.DataFrame(timetable)
         timetable_df.to_excel(output_file, index=False)
         print(f"✅ Exam timetable saved to '{output_file}'")
@@ -700,8 +686,6 @@ if __name__ == "__main__":
     departments = {
         "CSE-A": "data/CSE_courses-A.csv",
         "CSE-B": "data/CSE_courses-B.csv",
-        "DSAI": "data/DSAI_courses.csv",
-        "ECE": "data/ECE_courses.csv" 
         
     }
     rooms_file = "data/rooms.csv"
