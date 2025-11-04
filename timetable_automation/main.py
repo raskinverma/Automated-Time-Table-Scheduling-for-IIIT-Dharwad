@@ -620,6 +620,7 @@ if __name__ == "__main__":
         "CSE-A": "data/CSE_courses-A.csv",
         "CSE-B": "data/CSE_courses-B.csv",
         "DSAI": "data/DSAI_courses.csv",
+        "ECE": "data/ECE_courses.csv" 
         
     }
     rooms_file = "data/rooms.csv"
