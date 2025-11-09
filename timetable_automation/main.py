@@ -33,7 +33,7 @@ class Scheduler:
         self.labs = rooms_df[rooms_df["Type"].str.lower() == "lab"]["Room_ID"].tolist()
 
         self.days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-        self.excluded_slots = ["07:30-09:00", "10:30-10:45", "13:15-14:00","15:30-15:45", "17:30-18:30"]
+        self.excluded_slots = ["07:30-09:00", "10:30-10:45", "13:15-14:00", "17:30-18:30"]
         self.MAX_ATTEMPTS = 10
         self.unscheduled_courses = [] 
         self.course_room_map = {}      
@@ -684,8 +684,10 @@ class ExamScheduler:
 if __name__ == "__main__":
    
     departments = {
-        "CSE-A": "data/CSE_3_courses-A.csv",
-        "CSE-B": "data/CSE_3_courses-B.csv",
+        "CSE-3-A": "data/CSE_3_courses-A.csv",
+        "CSE-3-B": "data/CSE_3_courses-B.csv",
+        "DSAI": "data/DSAI_courses.csv",
+
         
     }
     rooms_file = "data/rooms.csv"
@@ -695,7 +697,7 @@ if __name__ == "__main__":
     exam_scheduler.generate_exam_timetable("CSE_A_exam_timetable.xlsx")
     exam_scheduler = ExamScheduler("data/CSE_3_courses-B.csv", "data/rooms.csv")
     exam_scheduler.generate_exam_timetable("CSE_B_exam_timetable.xlsx")
-    
+
     global_room_usage = {}
 
     
