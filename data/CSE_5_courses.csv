@@ -1,0 +1,13 @@
+Course_Code,Course_Title,L-T-P-S-C,Faculty,Semester_Half,Elective,Students,basket
+CS309,Statistics for Computer Science,3-1-0-0-4,Dr. Sunil C K,0,0,137,0
+CS303,Computer Networks,3-1-2-0-5,Dr. Animesh Roy,0,0,137,0
+CS304,Artificial Intelligence,3-1-0-0-4,Dr. Krishnendu,0,0,112,0
+HS101,Environmental Studies,0-0-0-8-2,Ashwath babu,0,0,0,0
+CS463,Parallel Computing,4-0-0-0-4,Dr. Pramod,0,1,24,1
+CS308,Compiler Design,4-0-0-0-4,Dr. Pavan Kumar,0,1,30,1
+DS301,Graphs and Social Network,4-0-0-0-4,Dr. Utkarsh K,0,1,17,1
+CS366,Advanced Algorithm Design,4-0-0-0-4,Dr. Suvadip,0,1,167,1
+DS359,Full Stack Development,4-0-0-0-4,Dr. Manjunath K V,0,1,127,2
+EC355,Internet of Things,4-0-0-0-4,Dr. Prakash Pawar,0,1,28,2
+CS352,Cryptography & Information Security,4-0-0-0-4,Dr. Rajendra Hegadi,0,1,38,2
+EC365,AI in Biomedical Signal Interpretation,4-0-0-0-4,Dr. Sibasankar Padhy,0,1,26,2

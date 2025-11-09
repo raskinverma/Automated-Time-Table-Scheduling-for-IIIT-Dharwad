@@ -8,6 +8,7 @@ random.seed(RANDOM_SEED)
 class Course:
     def __init__(self, row):
         self.code = str(row["Course_Code"]).strip()
+        self.basket = int(row.get("basket", 0))
         self.title = str(row.get("Course_Title", self.code)).strip()
         self.faculty = str(row.get("Faculty", "")).strip()
         self.ltp = str(row["L-T-P-S-C"]).strip()
@@ -191,13 +192,22 @@ class Scheduler:
         electives = [c for c in courses_to_allocate if c.is_elective]
         non_electives = [c for c in courses_to_allocate if not c.is_elective]
 
-        self.electives_by_sheet[sheet_name] = electives
+        baskets = {}
+        for e in electives:
+            baskets.setdefault(e.basket, []).append(e)
 
-        if electives:
-            chosen = random.choice(electives)
+        chosen_electives = []
+
+        for b in sorted(baskets.keys()):
+            if b == 0:
+                continue
+            group = baskets[b]
+            chosen = random.choice(group)
+            chosen_electives.append((b, chosen))
+
             elective_course = Course(
                 {
-                    "Course_Code": "Elective",
+                    "Course_Code": f"Elective_{b}",
                     "Course_Title": chosen.title,
                     "Faculty": chosen.faculty,
                     "L-T-P-S-C": chosen.ltp,
@@ -207,10 +217,12 @@ class Scheduler:
             )
             non_electives.append(elective_course)
 
+        self.electives_by_sheet[sheet_name] = chosen_electives
+
         random.shuffle(non_electives)
 
         for course in non_electives:
-            faculty, code, is_elective = course.faculty, course.code, course.code == "Elective"
+            faculty, code, is_elective = course.faculty, course.code, course.code.startswith("Elective_")
 
             
             remaining, attempts = course.L, 0
@@ -341,26 +353,27 @@ class Scheduler:
         assigned = {}
         used = set()
         idx = 0
-        for e in electives:
-            
-            chosen = None
+        for basket, elective in electives:
+            key = f"Elective_{basket}||{elective.title}"
+
+            chosen_room = None
             for r in free_rooms:
                 if r in used:
                     continue
-               
                 ok = True
                 for day, slot in elective_slots:
                     if r in self.global_room_usage.get(day, {}).get(slot, []):
                         ok = False
                         break
                 if ok:
-                    chosen = r
+                    chosen_room = r
                     break
-            if not chosen:
-                
-                chosen = free_rooms[idx % len(free_rooms)] if free_rooms else ""
-            assigned[e.code + "||" + e.title] = chosen or ""
-            used.add(chosen)
+
+            if not chosen_room:
+                chosen_room = free_rooms[idx % len(free_rooms)] if free_rooms else ""
+
+            assigned[key] = chosen_room
+            used.add(chosen_room)
             idx += 1
 
         self.elective_room_assignment[sheet_name] = assigned
@@ -438,7 +451,7 @@ class Scheduler:
             
             i = 1
             for code in color_map:
-                if code == "Elective":
+                if code.startswith("Elective_"):
                     continue
                 ws.cell(start_row + i, 2, i).border = thin_border
                 ws.cell(start_row + i, 3, code).border = thin_border
@@ -456,21 +469,19 @@ class Scheduler:
             electives = self.electives_by_sheet.get(sheet_name, [])
             elective_assignment = self.elective_room_assignment.get(sheet_name, {})
 
-            for elective in electives:
-                ws.cell(start_row + i, 2, i).border = thin_border
-                ws.cell(start_row + i, 3, "Elective").border = thin_border
-                ws.cell(start_row + i, 4, elective.title).border = thin_border
-                ws.cell(start_row + i, 5, elective.faculty).border = thin_border
-                key = elective.code + "||" + elective.title
-                classroom = elective_assignment.get(key, "") or ""
-                ws.cell(start_row + i, 6, classroom).border = thin_border
-                ws.cell(start_row + i, 7, "").fill = PatternFill(
-                    start_color=color_map.get("Elective", "FFFFFF"),
-                    end_color=color_map.get("Elective", "FFFFFF"),
+            for basket, elective in self.electives_by_sheet.get(sheet_name, []):
+                ws.cell(start_row + i, 2, i)
+                ws.cell(start_row + i, 3, f"Elective_{basket}")
+                ws.cell(start_row + i, 4, f"Basket {basket} Elective")
+                ws.cell(start_row + i, 5, "")
+                ws.cell(start_row + i, 6, "")
+                ws.cell(start_row + i, 7).fill = PatternFill(
+                    start_color=color_map.get(f"Elective_{basket}", "FFFFFF"),
+                    end_color=color_map.get(f"Elective_{basket}", "FFFFFF"),
                     fill_type="solid",
                 )
-                ws.cell(start_row + i, 7).border = thin_border
                 i += 1
+
 
         for sheet_name in wb.sheetnames:
             ws = wb[sheet_name]

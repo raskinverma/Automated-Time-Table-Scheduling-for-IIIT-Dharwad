@@ -1,16 +1,14 @@
-Course_Code,Course_Title,L-T-P-S-C,Faculty,Semester_Half,Elective
-MA161,Statistics,3-0-0-0-2,Dr. Ramesh Athe,0,0
-DS161,Introduction to DS and AI,3-0-0-0-2,Dr. Abdul Wahid,0,0
-MA162,Probability,3-0-0-0-2,Dr. Chimnayananda,2,0
-EC161,Digital Design,3-0-2-0-2,Dr. Prakash Pawar,2,0
-CS161,Problem Solving through Programming,3-0-2-0-4,Dr. Sunil C.K (Section B)/Dr. Sunil P.V (Section A)/Dr. Animesh Roy (ECE),0,0
-HS161,English Language and Communication,3-0-0-0-3,Dr. Rajesh N.S,0,0
-PH151,Introduction to Quantum Physics,3-0-0-0-2,Prof. Ravishankar (CC: Dr. Aswath Babu),0,0
-DS151,Linux for Engineers,3-0-0-0-2,Dr. Vivekraj,0,0
-NEW,Fundamentals of Sensing and Control,3-0-0-0-2,Mr. Mallikarjun Kande (CC: Dr. Deepak K.T),0,0
-HS157,Computational Musicology for Hindustani Music,3-0-0-0-1,Dr. Chandrika Kamat,0,1
-NEW,Kannada Kali-Nali,3-0-0-0-2,Dr. Anand B,0,1
-NEW,Leveraging IT for Social Good & CSR,3-0-0-0-2,Dr. Rajesh N.S,0,1
-NEW,Basics of Design,3-0-0-0-2,Dr. Sandesh Phalke,0,1
-HS156,Holistic Personality Development,3-0-0-0-1,Dr. Rajesh N.S,0,1
-CS151,Introduction to Cybersecurity,3-0-0-0-2,Dr. Girish Revadigar,2,1
+Course_Code,Course_Title,L-T-P-S-C,Faculty,Semester_Half,Elective,Students,basket
+MA161,Statistics,3-0-0-0-2,Dr. Ramesh Athe,1,0,107,0
+DS161,Introduction to DS and AI,3-0-0-0-2,Dr. Abdul Wahid,1,0,107,0
+MA162,Probability,3-0-0-0-2,Dr. Chimnayananda,2,0,107,0
+EC161,Digital Design,3-0-2-0-2,Dr. Prakash Pawar,2,0,107,0
+CS161,Problem Solving through Programming,3-0-2-0-4,Dr. Sunil C.K,0,0,107,0
+HS161,English Language and Communication,3-0-0-0-3,Dr. Rajesh N.S,0,0,107,0
+PH151,Introduction to Quantum Physics,3-0-0-0-2,Prof. Ravishankar,1,1,37,1
+DS151,Linux for Engineers,3-0-0-0-2,Dr. Vivekraj,1,1,67,1
+NEW,Fundamentals of Sensing and Control,3-0-0-0-2,Mr. Mallikarjun Kande ,2,1,35,1
+NEW,Leveraging IT for Social Good & CSR,3-0-0-0-2,Dr. Rajesh N.S,2,1,20,1
+NEW,Basics of Design,3-0-0-0-2,Dr. Sandesh Phalke,2,1,54,1
+HS156,Holistic Personality Development,3-0-0-0-1,Dr. Rajesh N.S,2,1,42,1
+CS151,Introduction to Cybersecurity,3-0-0-0-2,Dr. Girish Revadigar,1,1,102,1
