@@ -33,7 +33,7 @@ class Scheduler:
         self.labs = rooms_df[rooms_df["Type"].str.lower() == "lab"]["Room_ID"].tolist()
 
         self.days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-        self.excluded_slots = ["07:30-09:00", "10:30-10:45", "13:15-14:00", "17:30-18:30"]
+        self.excluded_slots = ["07:30-09:00", "13:15-14:00", "17:30-18:30"]
         self.MAX_ATTEMPTS = 10
         self.unscheduled_courses = [] 
         self.course_room_map = {}      
@@ -163,6 +163,19 @@ class Scheduler:
              
                 if session_type == "P":
                     labs_scheduled[day] = True
+                
+                last_slot = slots_to_use[-1]
+                idx = self.slots.index(last_slot)
+
+                if idx + 1 < len(self.slots):
+                    next_slot = self.slots[idx + 1]
+                    if timetable.at[day, next_slot] == "":
+                        timetable.at[day, next_slot] = "BREAK"
+                        if faculty:
+                            lecturer_busy[day][next_slot].append(faculty)
+                        if not is_elective and room:
+                            self.global_room_usage.setdefault(day, {}).setdefault(next_slot, []).append(room)
+
 
                 return True
 
@@ -377,7 +390,7 @@ class Scheduler:
                 start_col = 2
                 while start_col <= ws.max_column:
                     cell = ws.cell(row=row, column=start_col)
-                    if cell.value and cell.value != "FREE":
+                    if cell.value and cell.value not in ["FREE", "BREAK"]:
                         raw_code = str(cell.value).split(" ")[0]
                         code = raw_code.rstrip("T")
                         if code not in color_map:
@@ -402,6 +415,11 @@ class Scheduler:
                         for col_idx in range(start_col, start_col + merge_count + 1):
                             ws.cell(row=row, column=col_idx).border = thin_border
                         start_col += merge_count + 1
+                    elif cell.value == "BREAK":
+                        cell.fill = PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="solid")
+                        cell.alignment = Alignment(horizontal="center", vertical="center")
+                        cell.border = thin_border
+                        start_col += 1
                     else:
                         cell.border = thin_border
                         start_col += 1
@@ -613,74 +631,7 @@ class Scheduler:
         
         self._generate_faculty_workbook(faculty_filename)
 
-class ExamScheduler:
-    def __init__(self, courses_file, rooms_file, exam_days=None):
-        self.courses = pd.read_csv(courses_file)
-        self.rooms = pd.read_csv(rooms_file)
-        self.rooms = self.rooms[self.rooms["Type"].str.lower() == "classroom"]
-        if "Capacity" not in self.rooms.columns:
-            raise ValueError("rooms.csv must include a 'Capacity' column for exam scheduling")
-        self.rooms["Capacity"] = pd.to_numeric(self.rooms["Capacity"], errors="coerce").fillna(0).astype(int)
-        if "Students" not in self.courses.columns:
-            raise ValueError("courses CSV must include a 'Students' column for exam scheduling")
-        self.courses["Students"] = pd.to_numeric(self.courses["Students"], errors="coerce").fillna(0).astype(int)
-        if exam_days is None:
-            self.exam_days = [f"Day {i}" for i in range(1, 8)]
-        else:
-            self.exam_days = exam_days
-        self.slots = ["FN", "AN"]
 
-    def generate_exam_timetable(self, output_file="exam_timetable.xlsx"):
-        df = self.courses.sort_values(by="Students", ascending=False).reset_index(drop=True)
-
-        timetable = []
-        room_usage = {day: {"FN": [], "AN": []} for day in self.exam_days}
-
-        day_index, slot_index = 0, 0
-
-        for _, row in df.iterrows():
-            if day_index >= len(self.exam_days):
-                print("⚠️ Ran out of exam days! Add more to the schedule.")
-                break
-
-            day = self.exam_days[day_index]
-            slot = self.slots[slot_index]
-            students = int(row["Students"])
-            assigned_rooms = []
-            remaining = students
-
-            available_rooms = self.rooms.sort_values(by="Capacity", ascending=False)
-
-            for _, room in available_rooms.iterrows():
-                if remaining <= 0:
-                    break
-                if room["Room_ID"] in room_usage[day][slot]:
-                    continue  # already in use
-                assigned_rooms.append(room["Room_ID"])
-                room_usage[day][slot].append(room["Room_ID"])
-                remaining -= room["Capacity"]
-
-            if remaining > 0:
-                print(f"⚠️ Not enough capacity for {row['Course_Code']} ({students} students). Remaining: {remaining}")
-
-            timetable.append({
-                "Day": day,
-                "Slot": slot,
-                "Course_Code": row["Course_Code"],
-                "Course_Title": row["Course_Title"],
-                "Faculty": row.get("Faculty", ""),
-                "Students": students,
-                "Rooms_Assigned": ", ".join(assigned_rooms)
-            })
-            slot_index += 1
-            if slot_index >= 2:
-                slot_index = 0
-                day_index += 1
-        timetable_df = pd.DataFrame(timetable)
-        timetable_df.to_excel(output_file, index=False)
-        print(f"✅ Exam timetable saved to '{output_file}'")
-
-        return timetable_df
 if __name__ == "__main__":
    
     departments = {
@@ -692,15 +643,7 @@ if __name__ == "__main__":
     }
     rooms_file = "data/rooms.csv"
     slots_file = "data/timeslots.csv"
-    print("\nGenerating exam timetable...")
-    exam_scheduler = ExamScheduler("data/CSE_3_courses-A.csv", "data/rooms.csv")
-    exam_scheduler.generate_exam_timetable("CSE_A_exam_timetable.xlsx")
-    exam_scheduler = ExamScheduler("data/CSE_3_courses-B.csv", "data/rooms.csv")
-    exam_scheduler.generate_exam_timetable("CSE_B_exam_timetable.xlsx")
-
     global_room_usage = {}
-
-    
     combined_faculty_filename = "faculty_timetable.xlsx"
     
     all_scheduled_entries = []
@@ -710,14 +653,10 @@ if __name__ == "__main__":
         scheduler = Scheduler(slots_file, course_file, rooms_file, global_room_usage)
         student_file = f"{dept_name}_timetable.xlsx"
         scheduler.run_all_outputs(dept_name_prefix=dept_name, student_filename=student_file, faculty_filename=combined_faculty_filename)
-        
-        all_scheduled_entries.extend(scheduler.scheduled_entries)
-        
-        for k, v in scheduler.course_room_map.items():
-            
-            global_room_usage.setdefault("MAPPING", {})[k] = v
 
-    
+        all_scheduled_entries.extend(scheduler.scheduled_entries)
+        for k, v in scheduler.course_room_map.items():    
+            global_room_usage.setdefault("MAPPING", {})[k] = v    
     combined_courses = []
     for dept_name, course_file in departments.items():
         df = pd.read_csv(course_file)
