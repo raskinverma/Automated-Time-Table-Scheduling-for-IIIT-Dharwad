@@ -1,11 +1,11 @@
 Course_Code,Course_Title,L-T-P-S-C,Faculty,Semester_Half,Elective,Students
-MA261,Differential Equations,3-1-0-0-2,Dr. Anand Barangi,1,0,170
-MA262,Multivariate Calculus,3-1-0-0-2,Dr. Somen Bhattacharjee,2,0,170
+MA261,Differential Equations,3-1-0-0-2,Dr. Anand Barangi,1,0,85
+MA262,Multivariate Calculus,3-1-0-0-2,Dr. Somen Bhattacharjee,2,0,85
 CS261,Operating Systems,3-1-0-4-2,Dr. Suvadip Hazra,1,0,85
-CS262,Software design tools and technique,3-0-2-0-3,Dr. Sunil P V/Dr. Vivekraj VK,0,0,85
-CS263,Design & Analysis of Algorithms,3-0-2-0-4,Dr. Malay/Dr. Pramod Y,0,0,85
+CS262,Software design tools and technique,3-0-2-0-3,Dr. Sunil P V,0,0,85
+CS263,Design & Analysis of Algorithms,3-0-2-0-4,Dr. Malay,0,0,85
 CS264,Computer Networks,3-1-0-0-4,Dr. Prabhu Prasad BM,0,0,85
-HS261+HS262,HSS (Ethics Values+Environmental Studies),3-0-0-0-2,Dr. Ganesh MP/Dr. Aswath Babu H,0,0,170
+HS261+HS262,HSS (Ethics Values+Environmental Studies),3-0-0-0-2,Dr. Ganesh MP/Dr. Aswath Babu H,0,0,85
 NEW,Electronics System Design-I,3-1-0-0-2,Dr. Pankaj,1,1,75
 CS162,Data Science with Python,3-1-0-0-2,Dr. Abdul Wahid,1,1,50
 NEW,2D Computer Graphics,3-1-0-0-2,Dr. Vivek VK,1,1,20
