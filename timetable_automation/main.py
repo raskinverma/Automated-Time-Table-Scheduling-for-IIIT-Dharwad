@@ -652,8 +652,8 @@ if __name__ == "__main__":
         "CSE-1-B": "data/CSE_1_B_courses.csv",
         "CSE-5": "data/CSE_5_courses.csv",
         "CSE-7": "data/All_7_courses.csv",
-        "DSAI": "data/DSAI_courses.csv",
-
+        "DSAI-3": "data/DSAI_3_courses.csv",
+        "ECE-3": "data/ECE_3_courses.csv",
         
     }
     rooms_file = "data/rooms.csv"

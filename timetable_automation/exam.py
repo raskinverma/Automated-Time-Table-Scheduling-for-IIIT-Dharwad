@@ -350,7 +350,6 @@ class ExamScheduler:
 def run_example():
     departments = {
         "CSE-3": "data/exam_data/CSE_3.csv",
-        "CSE-1": "data/exam_data/CSE_1.csv"
     }
     rooms = "data/exam_data/rooms.csv"
     faculty = "data/exam_data/faculty.csv"
