@@ -519,6 +519,9 @@ def run_example():
         "CSE-3": "data/exam_data/CSE_3.csv",
         "ECE-3": "data/exam_data/ECE_3.csv",
         "DSAI-3": "data/exam_data/DSAI_3.csv",
+        "CSE-1": "data/exam_data/CSE_1.csv",
+        "ECE-1": "data/exam_data/ECE_1.csv",
+        "DSAI-1": "data/exam_data/DSAI_1.csv",
     }
     rooms = "data/exam_data/rooms.csv"
     faculty = "data/exam_data/faculty.csv"
