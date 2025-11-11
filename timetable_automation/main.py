@@ -388,23 +388,24 @@ class Scheduler:
         )
 
         color_map = {}
-        palette = ["FFC7CE", "C6EFCE", "FFEB9C", "BDD7EE", "D9EAD3", "F4CCCC", "D9D2E9", "FCE5CD", "C9DAF8", "EAD1DC"]
+        palette = ["FFC7CE", "C6EFCE", "FFEB9C", "BDD7EE", "D9EAD3", "F4CCCC",
+                "D9D2E9", "FCE5CD", "C9DAF8", "EAD1DC"]
         color_index = 0
 
-       
         for sheet_name in wb.sheetnames:
-            
             self._compute_elective_room_assignments_legally(sheet_name)
 
         for sheet_name in wb.sheetnames:
             ws = wb[sheet_name]
-            
+
             for row in range(2, ws.max_row + 1):
                 start_col = 2
                 while start_col <= ws.max_column:
                     cell = ws.cell(row=row, column=start_col)
-                    if cell.value and cell.value not in ["FREE", "BREAK"]:
-                        raw_code = str(cell.value).split(" ")[0]
+                    val = str(cell.value).strip() if cell.value is not None else ""
+
+                    if val and val not in ["FREE", "BREAK"]:
+                        raw_code = val.split(" ")[0]
                         code = raw_code.rstrip("T")
                         if code not in color_map:
                             color_map[code] = palette[color_index % len(palette)]
@@ -421,14 +422,13 @@ class Scheduler:
                             else:
                                 break
                         if merge_count > 0:
-                            ws.merge_cells(
-                                start_row=row, start_column=start_col, end_row=row, end_column=start_col + merge_count
-                            )
+                            ws.merge_cells(start_row=row, start_column=start_col, end_row=row, end_column=start_col + merge_count)
+
                         cell.alignment = Alignment(horizontal="center", vertical="center")
                         for col_idx in range(start_col, start_col + merge_count + 1):
                             ws.cell(row=row, column=col_idx).border = thin_border
                         start_col += merge_count + 1
-                    elif cell.value == "BREAK":
+                    elif val == "BREAK":
                         cell.fill = PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="solid")
                         cell.alignment = Alignment(horizontal="center", vertical="center")
                         cell.border = thin_border
@@ -437,18 +437,12 @@ class Scheduler:
                         cell.border = thin_border
                         start_col += 1
 
-           
             start_row = ws.max_row + 3
-            ws.cell(start_row, 2, "S.No").border = thin_border
-            ws.cell(start_row, 3, "Course Code").border = thin_border
-            ws.cell(start_row, 4, "Course Title").border = thin_border
-            ws.cell(start_row, 5, "Faculty").border = thin_border
-            ws.cell(start_row, 6, "Classroom").border = thin_border
-            ws.cell(start_row, 7, "Color").border = thin_border
-            for c in range(2, 8):
-                ws.cell(start_row, c).alignment = Alignment(horizontal="center", vertical="center")
+            headers = ["S.No", "Course Code", "Course Title", "Faculty", "Color"]
+            for idx, header in enumerate(headers, start=2):
+                ws.cell(start_row, idx, header).border = thin_border
+                ws.cell(start_row, idx).alignment = Alignment(horizontal="center", vertical="center")
 
-            
             i = 1
             for code in color_map:
                 if code.startswith("Elective_"):
@@ -456,54 +450,63 @@ class Scheduler:
                 ws.cell(start_row + i, 2, i).border = thin_border
                 ws.cell(start_row + i, 3, code).border = thin_border
                 course_name = next((c.title for c in self.courses if c.code == code), code)
-                ws.cell(start_row + i, 4, course_name).border = thin_border
                 faculty = next((c.faculty for c in self.courses if c.code == code), "")
+                ws.cell(start_row + i, 4, course_name).border = thin_border
                 ws.cell(start_row + i, 5, faculty).border = thin_border
-                classroom = self.course_room_map.get(code, "") or ""
-                ws.cell(start_row + i, 6, classroom).border = thin_border
-                ws.cell(start_row + i, 7, "").fill = PatternFill(start_color=color_map[code], end_color=color_map[code], fill_type="solid")
-                ws.cell(start_row + i, 7).border = thin_border
-                i += 1
-
-            
-            electives = self.electives_by_sheet.get(sheet_name, [])
-            elective_assignment = self.elective_room_assignment.get(sheet_name, {})
-
-            for basket, elective in self.electives_by_sheet.get(sheet_name, []):
-                ws.cell(start_row + i, 2, i)
-                ws.cell(start_row + i, 3, f"Elective_{basket}")
-                ws.cell(start_row + i, 4, f"Basket {basket} Elective")
-                ws.cell(start_row + i, 5, "")
-                ws.cell(start_row + i, 6, "")
-                ws.cell(start_row + i, 7).fill = PatternFill(
-                    start_color=color_map.get(f"Elective_{basket}", "FFFFFF"),
-                    end_color=color_map.get(f"Elective_{basket}", "FFFFFF"),
-                    fill_type="solid",
+                ws.cell(start_row + i, 6, "").fill = PatternFill(
+                    start_color=color_map[code],
+                    end_color=color_map[code],
+                    fill_type="solid"
                 )
+                ws.cell(start_row + i, 6).border = thin_border
                 i += 1
 
+            electives_header_row = start_row + i + 2
+            e_headers = ["S.No", "Elective Basket", "Elective Title", "Faculty", "Color"]
+            for idx, header in enumerate(e_headers, start=2):
+                ws.cell(electives_header_row, idx, header).border = thin_border
+                ws.cell(electives_header_row, idx).alignment = Alignment(horizontal="center", vertical="center")
 
-        for sheet_name in wb.sheetnames:
-            ws = wb[sheet_name]
+            chosen_by_basket = {b: e for (b, e) in self.electives_by_sheet.get(sheet_name, [])}
+            row_ctr = 1
+
+            for basket in sorted(chosen_by_basket.keys()):
+                elective_code = f"Elective_{basket}"
+                chosen_e = chosen_by_basket[basket]
+
+                all_electives = [c for c in self.courses if c.is_elective and c.basket == basket]
+
+                for idx_e, e in enumerate(all_electives):
+                    ws.cell(electives_header_row + row_ctr, 2, row_ctr).border = thin_border
+                    ws.cell(electives_header_row + row_ctr, 3, elective_code).border = thin_border
+                    ws.cell(electives_header_row + row_ctr, 4, e.title).border = thin_border
+                    ws.cell(electives_header_row + row_ctr, 5, e.faculty).border = thin_border
+                    ws.cell(electives_header_row + row_ctr, 6, "").fill = PatternFill(
+                        start_color=color_map.get(elective_code, "FFFFFF"),
+                        end_color=color_map.get(elective_code, "FFFFFF"),
+                        fill_type="solid"
+                    )
+                    ws.cell(electives_header_row + row_ctr, 6).border = thin_border
+
+                    row_ctr += 1
+
             for col in ws.columns:
                 max_length = 0
                 try:
-                    column = col[0].column_letter
+                    column_letter = col[0].column_letter
                 except Exception:
                     continue
                 for cell in col:
-                    try:
-                        if cell.value is not None:
-                            max_length = max(max_length, len(str(cell.value)))
-                    except:
-                        pass
-                ws.column_dimensions[column].width = max_length + 2
+                    if cell.value is not None:
+                        max_length = max(max_length, len(str(cell.value)))
+                ws.column_dimensions[column_letter].width = max_length + 2
 
         wb.save(filename)
         print(f"Formatted student timetable saved in {filename}")
 
+
+
     def _generate_faculty_workbook(self, faculty_filename):
-       
         faculty_set = set()
         for c in self.courses:
             raw = c.faculty
@@ -516,17 +519,18 @@ class Scheduler:
                 for p in [x.strip() for x in fstr.split("/") if x.strip()]:
                     faculty_set.add(p)
 
-       
-        faculty_sheets = {}
+        faculty_tables = {}
         for f in faculty_set:
-            faculty_sheets[f] = pd.DataFrame("    ", index=self.days, columns=self.slots)
+            faculty_tables[f] = {
+                "First_Half": pd.DataFrame("    ", index=self.days, columns=self.slots),
+                "Second_Half": pd.DataFrame("    ", index=self.days, columns=self.slots)
+            }
 
-        
         for ent in self.scheduled_entries:
             day = ent["day"]
             slot = ent["slot"]
-            display = ent["display"]  
-           
+            display = ent["display"]
+            sheet = ent["sheet"]
             if ent.get("faculty"):
                 faculties = [p.strip() for p in ent["faculty"].split("/") if p.strip()]
             else:
@@ -536,28 +540,37 @@ class Scheduler:
                     faculties.extend([p.strip() for p in m.faculty.split("/") if p.strip()])
 
             for f in faculties:
-                if f not in faculty_sheets:
-                    faculty_sheets[f] = pd.DataFrame("FREE", index=self.days, columns=self.slots)
-                faculty_sheets[f].at[day, slot] = display
+                faculty_tables[f][sheet].at[day, slot] = display
 
-        
         with pd.ExcelWriter(faculty_filename, engine="openpyxl") as writer:
-            for f in sorted(faculty_sheets.keys()):
-                safe_name = f[:31]
-                faculty_sheets[f].to_excel(writer, sheet_name=safe_name, index=True)
+            for f in sorted(faculty_tables.keys()):
+                safe = f[:31]
+                df_first = faculty_tables[f]["First_Half"]
+                df_second = faculty_tables[f]["Second_Half"]
 
-        
+                combined = pd.DataFrame()
+                combined[" "] = [""] * (len(self.days) + 2)
+                temp = df_first.reset_index()
+                temp.columns = ["Day"] + list(df_first.columns)
+                combined_first = temp
+
+                spacer = pd.DataFrame([[""] * temp.shape[1]], columns=temp.columns)
+
+                temp2 = df_second.reset_index()
+                temp2.columns = ["Day"] + list(df_second.columns)
+                combined_second = temp2
+
+                final = pd.concat([combined_first, spacer, combined_second], ignore_index=True)
+                final.to_excel(writer, sheet_name=safe, index=False)
+
         wb = load_workbook(faculty_filename)
         thin = Border(left=Side(style="thin"), right=Side(style="thin"), top=Side(style="thin"), bottom=Side(style="thin"))
-
-        
-        palette = ["FFC7CE", "C6EFCE", "FFEB9C", "BDD7EE", "D9EAD3", "F4CCCC", "D9D2E9", "FCE5CD", "C9DAF8", "EAD1DC"]
+        palette = ["FFC7CE","C6EFCE","FFEB9C","BDD7EE","D9EAD3","F4CCCC","D9D2E9","FCE5CD","C9DAF8","EAD1DC"]
         color_map = {}
         color_index = 0
 
         for sheet in wb.sheetnames:
             ws = wb[sheet]
-         
             for row in range(2, ws.max_row + 1):
                 start_col = 2
                 while start_col <= ws.max_column:
@@ -569,8 +582,6 @@ class Scheduler:
                             color_index += 1
                         fill = PatternFill(start_color=color_map[raw_code], end_color=color_map[raw_code], fill_type="solid")
                         cell.fill = fill
-
-                      
                         merge_count = 0
                         for col in range(start_col + 1, ws.max_column + 1):
                             next_cell = ws.cell(row=row, column=col)
@@ -589,19 +600,15 @@ class Scheduler:
                         cell.border = thin
                         start_col += 1
 
-            
             for col in ws.columns:
                 max_length = 0
                 try:
                     column = col[0].column_letter
-                except Exception:
+                except:
                     continue
                 for cell in col:
-                    try:
-                        if cell.value is not None:
-                            max_length = max(max_length, len(str(cell.value)))
-                    except:
-                        pass
+                    if cell.value is not None:
+                        max_length = max(max_length, len(str(cell.value)))
                 ws.column_dimensions[column].width = max_length + 2
 
         wb.save(faculty_filename)
