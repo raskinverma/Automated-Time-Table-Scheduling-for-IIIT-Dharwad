@@ -6,12 +6,12 @@ from openpyxl.styles import Alignment, Border, Side, PatternFill
 from datetime import datetime, timedelta
 
 SLOT_LABELS = ["09:00-12:00", "14:00-17:00"]
-MAX_GLOBAL_EXAMS_PER_DAY = 3
+MAX_GLOBAL_EXAMS_PER_DAY = 4
 MAX_EXAMS_PER_GROUP_PER_DAY = 1
 DEFAULT_START_DATE = "2025-11-20"
 
-ROOM_SORT_MODE = "small-first"   # "small-first" or "large-first"
-USE_HALLS_LAST = True            # halls only if classrooms can't fit
+ROOM_SORT_MODE = "small-first"  
+USE_HALLS_LAST = True          
 
 def invigilators_needed(capacity):
     return 2 if capacity >= 200 else 1
@@ -285,27 +285,19 @@ class ExamScheduler:
                         usable_cap = self.room_by_id[rid]["Usable"]
                         sanitized.append((rid, min(cnt, usable_cap)))
                     self._book_alloc(date, slot_used, sanitized)
-                    ordered_rooms = [(rid, cnt) for rid, cnt in sanitized]
-                    for c in block["electives"]:
-                        need = c.students
-                        per_alloc = []
-                        for rid, seats in ordered_rooms:
-                            if need <= 0:
-                                break
-                            take = min(need, seats)
-                            if take > 0:
-                                per_alloc.append((rid, take))
-                                need -= take
-                        alloc_text = "; ".join(f"{rid}:{cnt}" for rid, cnt in per_alloc)
-                        self.scheduled.append({
-                            "Date": date.strftime("%Y-%m-%d"),
-                            "Slot": slot_used,
-                            "Groups": c.group,
-                            "Course_Code": c.code,
-                            "Course_Title": c.title,
-                            "Students": c.students,
-                            "Allocations": alloc_text
-                        })
+                    groups_set = block["groups"]
+                    total_students = sum(c.students for c in block["electives"])
+                    alloc_text = "; ".join(f"{rid}:{cnt}" for rid, cnt in sanitized)
+
+                    self.scheduled.append({
+                        "Date": date.strftime("%Y-%m-%d"),
+                        "Slot": slot_used,
+                        "Groups": ", ".join(sorted(groups_set)),
+                        "Course_Code": code,
+                        "Course_Title": block["electives"][0].title,
+                        "Students": total_students,
+                        "Allocations": alloc_text
+                    })
             involved_groups = set()
             for _, block in course_items:
                 involved_groups.update(block["groups"])
@@ -449,19 +441,37 @@ class ExamScheduler:
         rows = self.scheduled
         groups = {}
         title_map = {}
+
         for r in rows:
             k = (r["Date"], r["Slot"], r["Course_Code"])
             title_map[r["Course_Code"]] = r.get("Course_Title", r["Course_Code"])
+
             if k not in groups:
                 groups[k] = {"Students": 0, "Alloc": {}, "Groups": set()}
+
             groups[k]["Students"] += int(r.get("Students", 0) or 0)
+
             alloc_dict = self._parse_alloc(r.get("Allocations", ""))
+
             for rid, cnt in alloc_dict.items():
-                groups[k]["Alloc"][rid] = groups[k]["Alloc"].get(rid, 0) + cnt
+                if rid not in groups[k]["Alloc"]:
+                    groups[k]["Alloc"][rid] = 0
+
+                if len(groups[k]["Groups"]) > 1:
+                    groups[k]["Alloc"][rid] = max(groups[k]["Alloc"].get(rid, 0), cnt)
+                else:
+                    groups[k]["Alloc"][rid] = groups[k]["Alloc"].get(rid, 0) + cnt
+
             gs = str(r.get("Groups", "")).strip()
             if gs:
                 for gname in [x.strip() for x in gs.split(",") if x.strip()]:
                     groups[k]["Groups"].add(gname)
+
+        for (date, slot, code), v in groups.items():
+            for rid in list(v["Alloc"].keys()):
+                if rid in self.room_by_id:
+                    v["Alloc"][rid] = min(v["Alloc"][rid], self.room_by_id[rid]["Usable"])
+
         merged_rows = []
         for (date, slot, code), v in sorted(groups.items()):
             merged_rows.append({
@@ -472,8 +482,11 @@ class ExamScheduler:
                 "Allocations": self._format_alloc(v["Alloc"]),
                 "Groups": ", ".join(sorted(v["Groups"])) if v["Groups"] else ""
             })
+
         legend = sorted([(code, title) for code, title in title_map.items()], key=lambda x: x[0])
+
         return pd.DataFrame(merged_rows), pd.DataFrame(legend, columns=["Course_Code", "Course_Title"])
+
 
     def _build_grid(self, merged_df):
         dates = sorted(merged_df["Date"].unique())
@@ -484,8 +497,8 @@ class ExamScheduler:
                 if subset.empty:
                     grid.at[s, d] = ""
                 else:
-                    best = subset.sort_values(by="Students", ascending=False).iloc[0]
-                    grid.at[s, d] = best["Course_Code"]
+                    codes = subset["Course_Code"].tolist()
+                    grid.at[s, d] = ", ".join(codes)
         return grid
 
     def export(self, out="exam_timetables.xlsx", uns="unscheduled_exams.xlsx", invig="invigilation.xlsx"):
