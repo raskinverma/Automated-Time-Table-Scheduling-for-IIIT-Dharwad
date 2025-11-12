@@ -52,6 +52,8 @@ class Scheduler:
         self.scheduled_entries = []
         self.electives_by_sheet = {}
         self.elective_room_assignment = {}
+        self.break_length_slots = 1
+
 
  
     def _slot_duration(self, slot):
@@ -183,14 +185,16 @@ class Scheduler:
                 last_slot = slots_to_use[-1]
                 idx = self.slots.index(last_slot)
 
-                if idx + 1 < len(self.slots):
-                    next_slot = self.slots[idx + 1]
-                    if timetable.at[day, next_slot] == "":
-                        timetable.at[day, next_slot] = "BREAK"
-                        if faculty:
-                            lecturer_busy[day][next_slot].append(faculty)
-                        if not is_elective and room:
-                            self.global_room_usage.setdefault(day, {}).setdefault(next_slot, []).append(room)
+                for extra in range(1, self.break_length_slots + 1):
+                    if idx + extra < len(self.slots):
+                        next_slot = self.slots[idx + extra]
+                        if timetable.at[day, next_slot] == "":
+                            timetable.at[day, next_slot] = "BREAK"
+                            if faculty:
+                                lecturer_busy[day][next_slot].append(faculty)
+                            if not is_elective and room:
+                                self.global_room_usage.setdefault(day, {}).setdefault(next_slot, []).append(room)
+
 
 
                 return True
