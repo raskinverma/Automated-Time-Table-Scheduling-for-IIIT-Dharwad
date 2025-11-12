@@ -30,19 +30,30 @@ class Scheduler:
         self.courses = [Course(row) for _, row in courses_df.iterrows()]
 
         rooms_df = pd.read_csv(rooms_file)
-        self.classrooms = rooms_df[rooms_df["Type"].str.lower() == "classroom"]["Room_ID"].tolist()
-        self.labs = rooms_df[rooms_df["Type"].str.lower() == "lab"]["Room_ID"].tolist()
+        self.classrooms = []
+        self.labs = []
+        self.all_rooms = []
+        for _, row in rooms_df.iterrows():
+            room_id = str(row["Room_ID"]).strip()
+            self.all_rooms.append(room_id)
+            if room_id.upper().startswith("L"):
+                self.labs.append(room_id)
+            elif room_id.upper().startswith("C"):
+                self.classrooms.append(room_id)
+            else:
+                continue
 
         self.days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
         self.excluded_slots = ["07:30-09:00", "13:15-14:00", "17:30-18:30"]
         self.MAX_ATTEMPTS = 10
-        self.unscheduled_courses = [] 
-        self.course_room_map = {}      
-        self.global_room_usage = global_room_usage 
-        self.scheduled_entries = []  
-        self.electives_by_sheet = {}  
-        self.elective_room_assignment = {}  
+        self.unscheduled_courses = []
+        self.course_room_map = {}
+        self.global_room_usage = global_room_usage
+        self.scheduled_entries = []
+        self.electives_by_sheet = {}
+        self.elective_room_assignment = {}
 
+ 
     def _slot_duration(self, slot):
         start, end = slot.split("-")
         h1, m1 = map(int, start.split(":"))
@@ -103,9 +114,13 @@ class Scheduler:
 
                
                 if not is_elective:
-                    if code in self.course_room_map:
-                        room = self.course_room_map[code]
-                    else:
+                    mapped = self.course_room_map.get(code)
+                    if mapped:
+                        if (session_type == "P" and mapped.upper().startswith("L")) or (session_type != "P" and not mapped.upper().startswith("L")):
+                            room = mapped
+                        else:
+                            mapped = None
+                    if not mapped:
                         possible_rooms = self.labs if session_type == "P" else self.classrooms
                         available_rooms = [
                             r
@@ -117,9 +132,9 @@ class Scheduler:
                         room = random.choice(available_rooms)
                         self.course_room_map[code] = room
 
-                   
                     for s in slots_to_use:
                         self.global_room_usage.setdefault(day, {}).setdefault(s, []).append(room)
+
                 else:
                     room = ""
 
@@ -438,10 +453,11 @@ class Scheduler:
                         start_col += 1
 
             start_row = ws.max_row + 3
-            headers = ["S.No", "Course Code", "Course Title", "Faculty", "Color"]
+            headers = ["S.No", "Course Code", "Course Title", "L-T-P-S-C", "Faculty", "Color"]
             for idx, header in enumerate(headers, start=2):
                 ws.cell(start_row, idx, header).border = thin_border
                 ws.cell(start_row, idx).alignment = Alignment(horizontal="center", vertical="center")
+
 
             i = 1
             for code in color_map:
@@ -451,14 +467,18 @@ class Scheduler:
                 ws.cell(start_row + i, 3, code).border = thin_border
                 course_name = next((c.title for c in self.courses if c.code == code), code)
                 faculty = next((c.faculty for c in self.courses if c.code == code), "")
+                ltpsc = next((c.ltp for c in self.courses if c.code == code), "")
                 ws.cell(start_row + i, 4, course_name).border = thin_border
-                ws.cell(start_row + i, 5, faculty).border = thin_border
-                ws.cell(start_row + i, 6, "").fill = PatternFill(
+                ws.cell(start_row + i, 5, ltpsc).border = thin_border
+                ws.cell(start_row + i, 5).alignment = Alignment(horizontal="center", vertical="center")
+                ws.cell(start_row + i, 6, faculty).border = thin_border
+                ws.cell(start_row + i, 7, "").fill = PatternFill(
                     start_color=color_map[code],
                     end_color=color_map[code],
                     fill_type="solid"
                 )
-                ws.cell(start_row + i, 6).border = thin_border
+                ws.cell(start_row + i, 7).border = thin_border
+
                 i += 1
 
             electives_header_row = start_row + i + 2
@@ -489,6 +509,14 @@ class Scheduler:
                     ws.cell(electives_header_row + row_ctr, 6).border = thin_border
 
                     row_ctr += 1
+
+            timetable_max_row = len(self.days) + 1
+            timetable_max_col = ws.max_column
+            for row in ws.iter_rows(min_row=2, max_row=timetable_max_row, min_col=2, max_col=timetable_max_col):
+                for cell in row:
+                    cell.border = thin_border
+            ws.freeze_panes = "B2"
+
 
             for col in ws.columns:
                 max_length = 0
@@ -600,6 +628,14 @@ class Scheduler:
                         cell.border = thin
                         start_col += 1
 
+                        
+            for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=2, max_col=ws.max_column):
+                for cell in row:
+                    cell.border = thin
+
+            ws.freeze_panes = "B2"
+
+
             for col in ws.columns:
                 max_length = 0
                 try:
@@ -658,7 +694,7 @@ if __name__ == "__main__":
         "CSE-1-A": "data/CSE_1_A_courses.csv",
         "CSE-1-B": "data/CSE_1_B_courses.csv",
         "CSE-5": "data/CSE_5_courses.csv",
-        "CSE-7": "data/7_courses.csv",
+        "DSAI-7": "data/7_courses.csv",
         "DSAI-3": "data/DSAI_3_courses.csv",
         "ECE-3": "data/ECE_3_courses.csv",
         "DSAI-1": "data/DSAI_1_courses.csv",
