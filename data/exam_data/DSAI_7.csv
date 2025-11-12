@@ -1,0 +1,19 @@
+Course_Code,Course_Title,L-T-P-S-C,Faculty,Semester_Half,Elective,Students,basket
+DS456,Cybersecurity Techniques,3-1-0-0-4,Dr. Rajendra Hegadi,0,1,146,1
+EC445,Reinforcement Learning,3-1-0-0-4,Dr. Dibyajyoti Guha,0,1,55,1
+DS401,Health Care Data Analytics,3-1-0-0-4,Dr. Girish GN,0,1,85,1
+
+EC462,Generative AI,3-1-0-0-4,Dr. Chinmayananda,0,1,131,2
+EC465,Hands on CMOS Analog and RF Circuit Design,3-1-0-0-4,Dr. Rajesh Kumar,0,1,47,2
+PH454,Quantum AI - Quantum Gen AI - Generative Models on Quantum Platform,3-1-0-0-4,Dr. Aswath Babu H,0,1,60,2
+ASD352,User Interactions and Experience Design,3-0-2-0-4,Dr. Sandesh P,0,1,36,2
+
+CS457,DevOps and its Applications,3-1-0-0-4,Dr. Shirshendu L,0,1,77,3
+DS458,Agentic AI,3-1-0-0-4,Dr. Sunil Saumya,0,1,83,3
+CS468,Information Retrieval,3-1-0-0-4,Dr. Krishnendu,0,1,51,3
+CS473,Cloud SRE and AI,3-1-0-0-4,Dr. Malay,0,1,20,3
+
+CS470,AI for Cybersecurity,3-1-0-0-4,Dr. Abdul Wahid,0,1,52,4
+DS420,Finance and Accounting,3-1-0-0-4,Dr. Anusree Kini,0,1,151,4
+MA452,Operations Research,3-1-0-0-4,Dr. Anand Barangi,0,1,37,4
+EC463,Energy Efficient Neural Networks,3-1-0-0-4,Dr. Jagadish D N,0,1,9,4

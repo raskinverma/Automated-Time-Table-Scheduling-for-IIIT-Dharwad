@@ -44,7 +44,7 @@ class Scheduler:
                 continue
 
         self.days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-        self.excluded_slots = ["07:30-09:00", "13:15-14:00", "17:30-18:30"]
+        self.excluded_slots = ["07:30-09:00", "13:15-14:00", "17:40-18:30"]
         self.MAX_ATTEMPTS = 10
         self.unscheduled_courses = []
         self.course_room_map = {}
@@ -693,18 +693,19 @@ class Scheduler:
 if __name__ == "__main__":
    
     departments = {
-        "CSE-3-A": "data/CSE_3_courses-A.csv",
-        "CSE-3-B": "data/CSE_3_courses-B.csv",
+        "CSE-3-A": "data/CSE_3_A_courses.csv",
+        "CSE-3-B": "data/CSE_3_B_courses.csv",
         "CSE-1-A": "data/CSE_1_A_courses.csv",
         "CSE-1-B": "data/CSE_1_B_courses.csv",
-        "CSE-5": "data/CSE_5_courses.csv",
-        "DSAI-7": "data/7_courses.csv",
+        "CSE-5-A": "data/CSE_5_A_courses.csv",
+        "CSE-5-B": "data/CSE_5_B_courses.csv",
+        "DSAI-7": "data/DSAI_7_courses.csv",
         "DSAI-3": "data/DSAI_3_courses.csv",
         "ECE-3": "data/ECE_3_courses.csv",
         "DSAI-1": "data/DSAI_1_courses.csv",
         "ECE-1": "data/ECE_1_courses.csv",
-        "DSAI-5": "data/DSAI_1_courses.csv",
-        "ECE-5": "data/ECE_1_courses.csv",
+        "DSAI-5": "data/DSAI_5_courses.csv",
+        "ECE-5": "data/ECE_5_courses.csv",
     }
     rooms_file = "data/rooms.csv"
     slots_file = "data/timeslots.csv"

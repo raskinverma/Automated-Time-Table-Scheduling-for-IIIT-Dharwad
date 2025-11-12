@@ -1,8 +1,14 @@
 Course_Code,Course_Title,L-T-P-S-C,Faculty,Semester_Half,Elective,Students,basket
-CS151,Introduction to Cybersecurity,3-0-0-4-2,Dr. Girish Revadigar,1,1,44,1
-CS161,Problem solving through Programming,3-0-2-0-4,Dr. Sunil C K/Dr. Sunil Kumar P V,0,0,134,0
-DS151,Linux for Engineers,3-0-0-0-2,Dr. Vivek Raj VK,1,1,44,1
+MA161,Statistics,3-0-0-0-2,Dr. Ramesh Athe,2,0,134,0
+DS161,Introduction to DS and AI,3-0-0-0-2,Dr. Abdul Wahid,2,0,134,0
+CS161,Problem solving through Programming,3-0-2-0-4,Dr. Sunil CK/Dr. Sunil Kumar PV,0,0,134,0
 EC161,Digital Design,3-0-2-0-2,Dr. Prakash Pawar, 1,0,134,0
-HS152,Economics,3-0-0-0-2, Dr. Anushree, 1,0,32,0
-MA162,Probability,3-0-0-0-2,Dr. Chinmayananda A,1,0,134,0
-PH151,Introduction to Quantum Physics,3-0-0-0-2,Dr. Aswath Babu,1,1,44,1
+MA162,Probability,3-0-0-0-2,Dr. Chinmayananda,1,0,134,0
+HS152,Economics,3-0-0-0-3,Dr. Anusree Kini, 1,0,38,0
+NEW,Fundamentals of Sensing and Control,3-0-0-0-2,Mr. Mallikarjun Kande,2,1,8,1
+NEW,Leveraging IT for Social Good & CSR,3-0-0-0-2,Dr. Rajesh N S,2,1,8,1
+NEW,Basics of Design,3-0-0-0-2,Dr. Sandesh P,2,1,10,1
+HS156,Holistic Personality Development,3-0-0-0-1,Dr. Rajesh N S,2,1,6,1
+DS151,Linux for Engineers,3-0-0-0-2,Dr. Vivekraj V K,1,1,22,1
+CS151,Introduction to Cybersecurity,3-0-0-4-2,Dr. Girish Revadigar,1,1,68,1
+PH151,Introduction to Quantum Physics,3-0-0-0-2,Dr. Aswath Babu H,1,1,12,1
