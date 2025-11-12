@@ -1,0 +1,14 @@
+Course_Code,Course_Title,L-T-P-S-C,Faculty,Semester_Half,Elective,Students,basket
+DS302,Computer Communication Networks,3-1-2-0-5,Dr. Shirshendu Layek,0,0,74,0
+DS303,Algorithms and Artificial Intelligence,3-1-0-0-4,Dr. Animesh Chaturvedi,0,0,76,0
+CS307,Machine Learning,3-0-2-0-4,Dr. Siddharth,0,0,235,0
+CS463,Parallel computing,3-0-2-0-4,Dr. Pramod Y,0,1,24,1
+CS308,Compiler Design, 3-1-0-0-4,Dr. Pavan Kumar,0,1,30,1
+DS301,Graphs and Social Network,3-1-0-0-4,Dr. Utkarsh K,0,1,18,1
+CS366,Advanced Algorithm Design,3-1-0-0-4,Dr. Suvadip,0,1,168,1
+DS359,Full Stack Development,3-0-2-0-4,Dr. Manjunath K V,0,1,127,2
+EC355,Internet of Things,3-0-2-0-4,Dr. Prakash Pawar,0,1,35,2
+EC364,Semiconductor Device Modeling,3-1-0-0-4,Dr. Pankaj Kumar,0,1,71,2
+CS352,Cryptography & Information Security,3-1-0-0-4,Dr. Rajendra Hegadi,0,1,39,2
+ASD352,User Interactions and Experience Design,3-0-2-0-4,Dr Sandesh P,0,1,118,2
+EC365,AI in Biomedical Signal Interpretation,3-0-2-0-4,Dr. Sibasankar Padhy,0,1,26,2
