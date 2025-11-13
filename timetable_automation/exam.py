@@ -4,6 +4,24 @@ import pandas as pd
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment, Border, Side, PatternFill
 from datetime import datetime, timedelta
+ALLOWED_DATES = [
+    "2025-11-20",
+    "2025-11-21",
+    "2025-11-22",
+    "2025-11-23",
+    "2025-11-24",
+    "2025-11-25",
+    "2025-11-26",
+    "2025-11-27",
+    "2025-11-28",
+    "2025-11-29",
+    "2025-11-30",
+]
+
+ALLOWED_DATES = [
+    datetime.strptime(d, "%Y-%m-%d").date()
+    for d in ALLOWED_DATES
+]
 
 SLOT_LABELS = ["09:00-12:00", "14:00-17:00"]
 MAX_GLOBAL_EXAMS_PER_DAY = 4
@@ -269,7 +287,9 @@ class ExamScheduler:
         for sem in semesters:
             baskets = sorted(pool[sem].keys(), key=lambda x: int(x))
             for basket_idx, basket in enumerate(baskets):
-                date = self.start_date + timedelta(days=day_cursor)
+                if day_cursor >= len(ALLOWED_DATES):
+                    break
+                date = ALLOWED_DATES[day_cursor]
                 self._ensure_date(date)
                 slot = SLOT_LABELS[basket_idx % len(SLOT_LABELS)]
                 block = pool[sem][basket]
@@ -335,8 +355,12 @@ class ExamScheduler:
         pending = sorted(merged_regular.values(), key=lambda x: (-x["students"], x["code"]))
         day = 0
         while pending and day < 300:
-            date = self.start_date + timedelta(days=day)
+            if day >= len(ALLOWED_DATES):
+                break
+
+            date = ALLOWED_DATES[day]
             self._ensure_date(date)
+
             placed_today = 0
             si = 0
             i = 0
