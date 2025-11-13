@@ -4,24 +4,6 @@ import pandas as pd
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment, Border, Side, PatternFill
 from datetime import datetime, timedelta
-ALLOWED_DATES = [
-    "2025-11-20",
-    "2025-11-21",
-    "2025-11-22",
-    "2025-11-23",
-    "2025-11-24",
-    "2025-11-25",
-    "2025-11-26",
-    "2025-11-27",
-    "2025-11-28",
-    "2025-11-29",
-    "2025-11-30",
-]
-
-ALLOWED_DATES = [
-    datetime.strptime(d, "%Y-%m-%d").date()
-    for d in ALLOWED_DATES
-]
 
 SLOT_LABELS = ["09:00-12:00", "14:00-17:00"]
 MAX_GLOBAL_EXAMS_PER_DAY = 4
@@ -49,8 +31,6 @@ class Course:
             self.students = 0
         flag = str(row.get("Elective", "0")).strip()
         self.is_elective = flag in ("1", "true", "True", "YES", "yes")
-        self.basket = str(row.get("basket", "0")).strip()
-
 
 class ExamScheduler:
     def __init__(self, rooms_file, departments, faculty_file, start_date=DEFAULT_START_DATE):
@@ -211,16 +191,13 @@ class ExamScheduler:
             sem = extract_semester_id(g)
             for c in self.courses[g]:
                 if c.is_elective:
-                    basket = getattr(c, "basket", "0")
                     if sem not in pool:
                         pool[sem] = {}
-                    if basket not in pool[sem]:
-                        pool[sem][basket] = {"electives": [], "groups": set()}
-                    pool[sem][basket]["electives"].append(c)
-                    pool[sem][basket]["groups"].add(g)
+                    if c.code not in pool[sem]:
+                        pool[sem][c.code] = {"electives": [], "groups": set()}
+                    pool[sem][c.code]["electives"].append(c)
+                    pool[sem][c.code]["groups"].add(g)
         return pool
-
-
 
     def _schedule_elective_block(self, sem, electives, groups_for_sem, start_day_offset, preferred_slot_index):
         day = start_day_offset
@@ -283,58 +260,52 @@ class ExamScheduler:
         pool = self._plan_electives_by_semester()
         semesters = sorted(pool.keys(), key=lambda x: int(x))
         day_cursor = 0
-
         for sem in semesters:
-            baskets = sorted(pool[sem].keys(), key=lambda x: int(x))
-            for basket_idx, basket in enumerate(baskets):
-                if day_cursor >= len(ALLOWED_DATES):
-                    break
-                date = ALLOWED_DATES[day_cursor]
-                self._ensure_date(date)
-                slot = SLOT_LABELS[basket_idx % len(SLOT_LABELS)]
-                block = pool[sem][basket]
-                groups = block["groups"]
-                electives = block["electives"]
-                total_students = sum(c.students for c in electives)
-                if self.global_daily[date] >= MAX_GLOBAL_EXAMS_PER_DAY:
-                    day_cursor += 1
-                    continue
-                if any(self.group_daily[date][g] >= MAX_EXAMS_PER_GROUP_PER_DAY for g in groups):
-                    day_cursor += 1
-                    continue
-                alloc = self._alloc_rooms(date, slot, total_students)
-                if alloc is None:
-                    day_cursor += 1
-                    continue
-                self._book_alloc(date, slot, alloc)
-                remaining_alloc = [(rid, cnt) for rid, cnt in alloc]
-                for c in electives:
-                    need = c.students
-                    per_elec_alloc = []
-                    for rid, seats in remaining_alloc:
-                        if need <= 0:
-                            break
-                        take = min(seats, need)
-                        if take > 0:
-                            per_elec_alloc.append((rid, take))
-                            need -= take
-                    alloc_text = "; ".join(f"{rid}:{cnt}" for rid, cnt in per_elec_alloc)
+            course_blocks = pool[sem]
+            course_items = sorted(course_blocks.items(), key=lambda kv: kv[0])
+            mid = len(course_items) // 2
+            morning_items = course_items[:mid]
+            afternoon_items = course_items[mid:]
+            date = self.start_date + timedelta(days=day_cursor)
+            self._ensure_date(date)
+            for slot, items in zip([SLOT_LABELS[0], SLOT_LABELS[1]], [morning_items, afternoon_items]):
+                for code, block in items:
+                    total_students = sum(c.students for c in block["electives"])
+                    alloc = self._alloc_rooms(date, slot, total_students)
+                    if alloc is None:
+                        other_slot = SLOT_LABELS[1] if slot == SLOT_LABELS[0] else SLOT_LABELS[0]
+                        alloc = self._alloc_rooms(date, other_slot, total_students)
+                        if alloc is None:
+                            continue
+                        slot_used = other_slot
+                    else:
+                        slot_used = slot
+                    sanitized = []
+                    for rid, cnt in alloc:
+                        usable_cap = self.room_by_id[rid]["Usable"]
+                        sanitized.append((rid, min(cnt, usable_cap)))
+                    self._book_alloc(date, slot_used, sanitized)
+                    groups_set = block["groups"]
+                    total_students = sum(c.students for c in block["electives"])
+                    alloc_text = "; ".join(f"{rid}:{cnt}" for rid, cnt in sanitized)
+
                     self.scheduled.append({
                         "Date": date.strftime("%Y-%m-%d"),
-                        "Slot": slot,
-                        "Groups": ", ".join(sorted(groups)),
-                        "Course_Code": c.code,
-                        "Course_Title": c.title,
-                        "Students": c.students,
+                        "Slot": slot_used,
+                        "Groups": ", ".join(sorted(groups_set)),
+                        "Course_Code": code,
+                        "Course_Title": block["electives"][0].title,
+                        "Students": total_students,
                         "Allocations": alloc_text
                     })
-                for g in groups:
-                    self.group_daily[date][g] += 1
-                self.global_daily[date] += 1
-
-                if basket_idx % len(SLOT_LABELS) == len(SLOT_LABELS) - 1:
-                    day_cursor += 1
+            involved_groups = set()
+            for _, block in course_items:
+                involved_groups.update(block["groups"])
+            for g in involved_groups:
+                self.group_daily[date][g] += 1
+            self.global_daily[date] += 1
             day_cursor += 1
+
         self._remove_scheduled_electives_from_pool()
 
         merged_regular = {}
@@ -355,12 +326,8 @@ class ExamScheduler:
         pending = sorted(merged_regular.values(), key=lambda x: (-x["students"], x["code"]))
         day = 0
         while pending and day < 300:
-            if day >= len(ALLOWED_DATES):
-                break
-
-            date = ALLOWED_DATES[day]
+            date = self.start_date + timedelta(days=day)
             self._ensure_date(date)
-
             placed_today = 0
             si = 0
             i = 0
@@ -555,10 +522,10 @@ def run_example():
         "CSE-1": "data/exam_data/CSE_1.csv",
         "ECE-1": "data/exam_data/ECE_1.csv",
         "DSAI-1": "data/exam_data/DSAI_1.csv",
-        "CSE-5": "data/exam_data/CSE_5.csv",
-        "ECE-5": "data/exam_data/ECE_5.csv", 
         "DSAI-5": "data/exam_data/DSAI_5.csv",
-        "DSAI-7": "data/exam_data/DSAI_7.csv",
+        "CSE-5": "data/exam_data/CSE_5.csv",
+        "ECE-5": "data/exam_data/ECE_5.csv",    
+        "Sem-7": "data/exam_data/DSAI_7.csv",
 
     }
     rooms = "data/exam_data/rooms.csv"

@@ -699,7 +699,7 @@ if __name__ == "__main__":
         "CSE-1-B": "data/CSE_1_B_courses.csv",
         "CSE-5-A": "data/CSE_5_A_courses.csv",
         "CSE-5-B": "data/CSE_5_B_courses.csv",
-        "DSAI-7": "data/DSAI_7_courses.csv",
+        "7-SEM": "data/DSAI_7_courses.csv",
         "DSAI-3": "data/DSAI_3_courses.csv",
         "ECE-3": "data/ECE_3_courses.csv",
         "DSAI-1": "data/DSAI_1_courses.csv",
