@@ -538,7 +538,7 @@ class Scheduler:
                 # Check all rooms for stability
                 # Preference order: Classrooms first if this course actually has lectures (to avoid putting lectures in labs ideally)
                 
-                search_order = sorted(self.classrooms) + sorted(self.labs)
+                search_order = sorted(self.classrooms)
                 if not lecture_slots: # If pure lab course, prefer labs
                      search_order = sorted(self.labs) + sorted(self.classrooms)
                 
