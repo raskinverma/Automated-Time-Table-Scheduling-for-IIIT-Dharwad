@@ -335,6 +335,8 @@ class Scheduler:
             if forced_allocations_L:
                 # Deterministic scheduling for this elective
                 for alloc in forced_allocations_L:
+                    if remaining <= 0:
+                        break
                     day = alloc['day']
                     slots = alloc['slots']
                     duration = sum(self.slot_durations[s] for s in slots)
@@ -389,6 +391,8 @@ class Scheduler:
             remaining = course.T
             if forced_allocations_T:
                  for alloc in forced_allocations_T:
+                    if remaining <= 0:
+                        break
                     day = alloc['day']
                     slots = alloc['slots']
                     res = self._allocate_session(
@@ -439,6 +443,8 @@ class Scheduler:
             remaining = course.P
             if forced_allocations_P:
                  for alloc in forced_allocations_P:
+                    if remaining <= 0:
+                        break
                     day = alloc['day']
                     slots = alloc['slots']
                     duration = sum(self.slot_durations[s] for s in slots)
@@ -937,19 +943,18 @@ class Scheduler:
 if __name__ == "__main__":
    
     departments = {
-        "CSE-3-A": "data/CSE_3_A_courses.csv",
-        "CSE-3-B": "data/CSE_3_B_courses.csv",
-        "CSE-1-A": "data/CSE_1_A_courses.csv",
-        "CSE-1-B": "data/CSE_1_B_courses.csv",
-        "CSE-5-A": "data/CSE_5_A_courses.csv",
-        "CSE-5-B": "data/CSE_5_B_courses.csv",
-        "7-SEM": "data/DSAI_7_courses.csv",
-        "DSAI-3": "data/DSAI_3_courses.csv",
-        "ECE-3": "data/ECE_3_courses.csv",
-        "DSAI-1": "data/DSAI_1_courses.csv",
-        "ECE-1": "data/ECE_1_courses.csv",
-        "DSAI-5": "data/DSAI_5_courses.csv",
-        "ECE-5": "data/ECE_5_courses.csv",
+        "CSE-3-A": "data/coursesCSEA-III.csv",
+        "CSE-3-B": "data/coursesCSEB-III.csv",
+        "CSE-1-A": "data/coursesCSEA-I.csv",
+        "CSE-1-B": "data/coursesCSEB-I.csv",
+        "CSE-5": "data/coursesCSE-V.csv",
+        "7-SEM": "data/courses7.csv",
+        "DSAI-3": "data/coursesDSAI-III.csv",
+        "ECE-3": "data/coursesECE-III.csv",
+        "DSAI-1": "data/coursesDSAI-I.csv",
+        "ECE-1": "data/coursesECE-I.csv",
+        "DSAI-5": "data/coursesDSAI-V.csv",
+        "ECE-5": "data/coursesECE-V.csv",
     }
     rooms_file = "data/rooms.csv"
     slots_file = "data/timeslots.csv"

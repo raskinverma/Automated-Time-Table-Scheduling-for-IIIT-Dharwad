@@ -1,0 +1,11 @@
+Course_Code,Course_Title,L-T-P-S-C,Faculty,Is_Combined,Semester_Half,Elective,Students,basket
+CS261,Operating Systems,3-1-0-4-2,Dr. Suvadip Hazra,0,2,0,85,0
+CS262,Software design tools and technique,3-0-2-0-3,Dr. Vivekraj V K,0,0,0,85,0
+CS263,Design & Analysis of Algorithms,3-0-2-0-4,Dr. Pramod Yelmewad,0,0,0,85,0
+CS264,Computer Networks,3-1-0-0-4,Dr. Prabhu Prasad BM,0,0,0,85,0
+EC251,Electronics System Design-I,3-1-0-0-2,Dr. Pankaj Kumar,1,1,1,75,1
+EC252,Introduction of RFIC design,3-1-0-0-2,Dr. Rajesh Kumar,1,2,1,15,1
+EC253,Introduction to Embedded Signal Intelligence,3-1-0-0-2,Dr. Sibasankar Padhy,1,2,1,70,1
+EC254,Electronic Systems Engineering,3-1-0-0-2,Mr. Mallikarjun Kande,1,1,1,60,1
+CS152,Data Science with Python,3-1-0-0-2,Dr. Abdul Wahid,1,1,1,50,1
+CS251,2D Computer Graphics,3-1-0-0-2,Dr. Vivekraj V K,1,1,1,20,1
