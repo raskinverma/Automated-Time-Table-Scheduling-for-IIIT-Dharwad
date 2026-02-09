@@ -1,13 +1,13 @@
-Course_Code,Course_Title,L-T-P-S-C,Faculty,Is_Combined,Semester_Half,Elective,Students,basket
-MA262,Multivariate Calculus,3-1-0-0-2,Dr. Somen Bhattacharjee,1,1,0,86,0
-MA261,Differential Equations,3-1-0-0-2,Dr. Anand Barangi,1,2,0,86,0
-DA261,Statistical Programming,1-0-2-0-2,Dr. Ramesh Athe,0,1,0,86,0
-DA262,Data Handling and Visualization,2-0-2-0-3,Dr. Siddharth,0,1,0,86,0
-CS304,Artificial Intelligence,3-1-0-0-4,Dr. Animesh Chaturvedi,0,0,0,86,0
-CS307,Machine Learning,3-2-0-0-4,Dr. Utkarsh Khaire,0,0,0,86,0
-EC251,Electronics System Design-I,3-1-0-0-2,Dr. Pankaj Kumar,1,1,1,75,1
-EC252,Introduction of RFIC design,3-1-0-0-2,Dr. Rajesh Kumar,1,1,1,15,1
-EC253,Introduction to Embedded Signal Intelligence,3-1-0-0-2,Dr. Sibasankar Padhy,1,2,1,70,1
-EC254,Electronic Systems Engineering,3-1-0-0-2,Mr. Mallikarjun Kande,1,1,1,60,1
-CS152,Data Science with Python,3-1-0-0-2,Dr. Abdul Wahid,1,1,1,50,1
-CS251,2D Computer Graphics,3-1-0-0-2,Dr. Vivekraj V K,1,1,1,20,1
+Course_Code,Course_Title,L-T-P-S-C,Faculty,Semester_Half,Elective,Students,basket,is_combined
+MA262,Multivariate Calculus,3-1-0-0-2,Dr. Somen Bhattacharjee,1,0,86,0,1
+MA261,Differential Equations,3-1-0-0-2,Dr. Anand Barangi,2,0,86,0,1
+DA261,Statistical Programming,1-0-2-0-2,Dr. Ramesh Athe,1,0,86,0,0
+DA262,Data Handling and Visualization,2-0-2-0-3,Dr. Siddharth,1,0,86,0,0
+CS304,Artificial Intelligence,3-1-0-0-4,Dr. Animesh Chaturvedi,0,0,86,0,0
+CS307,Machine Learning,3-2-0-0-4,Dr. Utkarsh Khaire,0,0,86,0,0
+EC251,Electronics System Design-I,3-1-0-0-2,Dr. Pankaj Kumar,1,1,75,1,0
+EC252,Introduction of RFIC design,3-1-0-0-2,Dr. Rajesh Kumar,1,1,15,1,0
+EC253,Introduction to Embedded Signal Intelligence,3-1-0-0-2,Dr. Sibasankar Padhy,2,1,70,1,0
+EC254,Electronic Systems Engineering,3-1-0-0-2,Mr. Mallikarjun Kande,1,1,60,1,0
+CS152,Data Science with Python,3-1-0-0-2,Dr. Abdul Wahid,1,1,50,1,0
+CS251,2D Computer Graphics,3-1-0-0-2,Dr. Vivekraj V K,1,1,20,1,0

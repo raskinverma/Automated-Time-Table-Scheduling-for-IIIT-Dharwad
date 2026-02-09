@@ -1,0 +1,79 @@
+Semester,Section,Course code,Course name,L,T,P,S,C,Faculty,Combined,Elective,total_students,ElectiveBasket,Semester_Half
+5,A,CS309,Statistics for Computer Science,3,1,0,0,4,Dr. Sunil C K,0,0,85,0,0
+5,A,CS303,Computer Networks,3,1,2,0,5,Dr. Animesh Roy,0,0,85,0,0
+5,A,CS304,Artificial Intelligence,3,1,0,0,4,Dr. Krishnendu,0,0,85,0,0
+5,A,HS101,Environmental Studies,0,0,0,8,2,Dr. Ashwath babu,0,0,0,0,0
+5,A,CS463,Parallel computing,3,0,2,0,4,Dr. Pramod Yelmewad,0,1,24,4,0
+5,A,CS308,Compiler Design,3,1,0,0,4,Dr. Pavan Kumar,0,1,30,3,0
+5,A,DS301,Graphs and Social Network,3,1,0,0,4,Dr. Utkarsh K,0,1,18,3,0
+5,A,CS366,Advanced Algorithm Design,3,1,0,0,4,Dr. Suvadip,1,1,85,3,0
+5,A,DS359,Full Stack Development,3,0,2,0,4,Dr. Manjunath K V,0,1,85,4,0
+5,A,EC355,Internet of Things,3,0,2,0,4,Dr. Prakash Pawar,0,1,35,4,0
+5,A,EC364,Semiconductor Device Modeling,3,1,0,0,4,Dr. Pankaj Kumar,0,1,71,3,0
+5,A,CS352,Cryptography & Information Security,3,1,0,0,4,Dr. Rajendra Hegadi,0,1,39,3,0
+5,A,ASD352,User Interactions and Experience Design,3,0,2,0,4,Dr Sandesh P,0,1,85,4,0
+5,A,EC365,AI in Biomedical Signal Interpretation,3,0,2,0,4,Dr. Sibasankar Padhy,0,1,26,4,0
+3,B,CS261,Operating Systems,3,1,0,4,2,Dr. Suvadip Hazra,0,0,85,0,2
+3,B,CS262,Software design tools and technique,3,0,2,0,3,Dr. Vivekraj V K,0,0,85,0,0
+3,B,CS263,Design & Analysis of Algorithms,3,0,2,0,4,Dr. Pramod Yelmewad,0,0,85,0,0
+3,B,CS264,Computer Networks,3,1,0,0,4,Dr. Prabhu Prasad BM,0,0,85,0,0
+3,B,EC251,Electronics System Design-I,3,1,0,0,2,Dr. Pankaj Kumar,0,2,75,1,1
+3,B,EC252,Introduction of RFIC design,3,1,0,0,2,Dr. Rajesh Kumar,0,2,15,1,2
+3,B,EC253,Introduction to Embedded Signal Intelligence,3,1,0,0,2,Dr. Sibasankar Padhy,0,3,70,1,2
+3,B,EC254,Electronic Systems Engineering,3,1,0,0,2,Mr. Mallikarjun Kande,0,3,60,1,1
+3,B,CS152,Data Science with Python,3,1,0,0,2,Dr. Abdul Wahid,0,2,50,1,1
+3,B,CS251,2D Computer Graphics,3,1,0,0,2,Dr. Vivekraj V K,0,3,20,1,1
+1,B,MA161,Statistics,3,0,0,0,2,Dr. Ramesh Athe,1,0,200,0,1
+1,B,DS161,Introduction to DS and AI,3,0,0,0,2,Dr. Abdul Wahid,1,0,200,0,1
+1,B,MA162,Probability,3,0,0,0,2,Dr. Chinmayananda,1,0,200,0,2
+1,B,EC161,Digital Design,3,0,2,0,2,Dr. Prakash Pawar,1,0,200,0,2
+1,B,CS161,Problem Solving through Programming,3,0,2,0,4,Dr. Sunil C K,0,0,85,0,0
+1,B,HS161,English Language and Communication,3,0,0,0,3,Dr. Rajesh N S,0,0,85,0,0
+1,B,PH151,Introduction to Quantum Physics,3,0,0,0,2,Prof. Ravishankar,0,1,37,1,1
+1,B,DS151,Linux for Engineers,3,0,0,0,2,Dr. Vivekraj V K,0,1,67,1,1
+1,B,FS161,Fundamentals of Sensing and Control,3,0,0,0,2,Mr. Mallikarjun Kande,0,1,35,1,1
+1,B,LT151,Leveraging IT for Social Good & CSR,3,0,0,0,2,Dr. Rajesh N S,0,1,20,1,2
+1,B,BD151,Basics of Design,3,0,0,0,2,Dr. Sandesh P,0,1,54,1,2
+1,B,HS156,Holistic Personality Development,3,0,0,0,1,Dr. Rajesh N S,0,1,42,1,2
+1,B,CS151,Introduction to Cybersecurity,3,0,0,0,2,Dr. Girish Revadigar,0,1,102,1,1
+3,A,CS261,Operating Systems,3,1,0,4,2,Dr. Suvadip Hazra,0,0,85,0,1
+3,A,CS262,Software design tools and technique,3,0,2,0,3,Dr. Sunil Kumar P V,0,0,85,0,0
+3,A,CS263,Design & Analysis of Algorithms,3,0,2,0,4,Dr. Malay,0,0,85,0,0
+3,A,CS264,Computer Networks,3,1,0,0,4,Dr. Prabhu Prasad BM,0,0,85,0,0
+3,A,EC251,Electronics System Design-I,3,1,0,0,2,Dr. Pankaj Kumar,0,2,75,1,1
+3,A,EC252,Introduction of RFIC design,3,1,0,0,2,Dr. Rajesh Kumar,0,2,15,1,2
+3,A,EC253,Introduction to Embedded Signal Intelligence,3,1,0,0,2,Dr. Sibasankar Padhy,0,3,70,1,2
+3,A,EC254,Electronic Systems Engineering,3,1,0,0,2,Mr. Mallikarjun Kande,0,3,60,1,1
+3,A,CS152,Data Science with Python,3,1,0,0,2,Dr. Abdul Wahid,0,2,50,1,1
+3,A,CS251,2D Computer Graphics,3,1,0,0,2,Dr. Vivekraj V K,0,3,20,1,1
+1,A,MA161,Statistics,3,0,0,0,2,Dr. Ramesh Athe,1,0,200,0,1
+1,A,DS161,Introduction to DS and AI,3,0,0,0,2,Dr. Abdul Wahid,1,0,200,0,1
+1,A,MA162,Probability,3,0,0,0,2,Dr. Chinmayananda,1,0,200,0,2
+1,A,EC161,Digital Design,3,0,2,0,2,Dr. Prakash Pawar,1,0,200,0,2
+1,A,CS161,Problem Solving through Programming,3,0,2,0,4,Dr. Sunil Kumar P V,0,0,85,0,0
+1,A,HS161,English Language and Communication,3,0,0,0,3,Dr. Rajesh N S,0,0,85,0,0
+1,A,PH151,Introduction to Quantum Physics,3,0,0,0,2,Prof. Ravishankar,0,1,37,1,1
+1,A,DS151,Linux for Engineers,3,0,0,0,2,Dr. Vivekraj V K,0,1,67,1,1
+1,A,FS161,Fundamentals of Sensing and Control,3,0,0,0,2,Mr. Mallikarjun Kande,0,1,35,1,1
+1,A,LT151,Leveraging IT for Social Good & CSR,3,0,0,0,2,Dr. Rajesh N S,0,1,20,1,2
+1,A,BD151,Basics of Design,3,0,0,0,2,Dr. Sandesh P,0,1,54,1,2
+1,A,HS156,Holistic Personality Development,3,0,0,0,1,Dr. Rajesh N S,0,1,42,1,2
+1,A,CS151,Introduction to Cybersecurity,3,0,0,0,2,Dr. Girish Revadigar,0,1,102,1,1
+5,B,CS309,Statistics for Computer Science,3,1,0,0,4,Dr. Sunil C K,0,0,85,0,0
+5,B,CS303,Computer Networks,3,1,2,0,5,Dr. Animesh Roy,0,0,85,0,0
+5,B,CS304,Artificial Intelligence,3,1,0,0,4,Dr. Krishnendu,0,0,85,0,0
+5,B,HS101,Environmental Studies,0,0,0,8,2,Dr. Ashwath babu,0,0,0,0,0
+5,B,CS463,Parallel computing,3,0,2,0,4,Dr. Pramod Yelmewad,0,1,24,4,0
+5,B,CS308,Compiler Design,3,1,0,0,4,Dr. Pavan Kumar,0,1,30,3,0
+5,B,DS301,Graphs and Social Network,3,1,0,0,4,Dr. Utkarsh K,0,1,18,3,0
+5,B,CS366,Advanced Algorithm Design,3,1,0,0,4,Dr. Suvadip,1,1,85,3,0
+5,B,DS359,Full Stack Development,3,0,2,0,4,Dr. Manjunath K V,0,1,85,4,0
+5,B,EC355,Internet of Things,3,0,2,0,4,Dr. Prakash Pawar,0,1,35,4,0
+5,B,EC364,Semiconductor Device Modeling,3,1,0,0,4,Dr. Pankaj Kumar,0,1,71,3,0
+5,B,CS352,Cryptography & Information Security,3,1,0,0,4,Dr. Rajendra Hegadi,0,1,39,3,0
+5,B,ASD352,User Interactions and Experience Design,3,0,2,0,4,Dr Sandesh P,0,1,85,4,0
+5,B,EC365,AI in Biomedical Signal Interpretation,3,0,2,0,4,Dr. Sibasankar Padhy,0,1,26,4,0
+3,B,MA261,Differential Equations,3,1,0,0,2,Dr. Anand Barangi,1,0,85,0,1
+3,A,MA261,Differential Equations,3,1,0,0,2,Dr. Anand Barangi,1,0,85,0,1
+3,B,MA262,Multivaritate Calculus,3,1,0,0,2,Dr. Anand Barangi,1,0,85,0,2
+3,B,MA262,Multivaritate Calculus,3,1,0,0,2,Dr. Anand Barangi,1,0,85,0,2

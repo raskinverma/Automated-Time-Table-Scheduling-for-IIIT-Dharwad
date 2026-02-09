@@ -1,14 +1,14 @@
-Course_Code,Course_Title,L-T-P-S-C,Faculty,Semester_Half,Elective,Students,basket
-EC306,Digital Signal Processing,3-0-2-0-4,Dr. Sibasankar Padhy,0,0,55,0
-EC301,Introduction to VLSI Design,3-1-0-0-4,Dr.Jagdish D.N,0,0,55,0
-EC351,Introduction to Algorithms,3-1-0-0-4,Dr.Jagdish R.B,0,0,55,0
-CS463,Parallel computing,3-0-2-0-4,Dr. Pramod Yelmewad,0,1,24,2
-CS308,Compiler Design, 3-1-0-0-4,Dr. Pavan Kumar,0,1,30,1
-DS301,Graphs and Social Network,3-1-0-0-4,Dr. Utkarsh K,0,1,18,1
-CS366,Advanced Algorithm Design,3-1-0-0-4,Dr. Suvadip Hazra,0,1,168,1
-EC364,Semiconductor Device Modeling,3-1-0-0-4,Dr. Pankaj Kumar,0,1,71,1
-DS359,Full Stack Development,3-0-2-0-4,Dr. Manjunath K V,0,1,127,2
-EC355,Internet of Things,3-0-2-0-4,Dr. Prakash Pawar,0,1,35,2
-CS352,Cryptography & Information Security,3-1-0-0-4,Dr. Rajendra Hegadi,0,1,39,1
-ASD352,User Interactions and Experience Design,3-0-2-0-4,Dr Sandesh P,0,1,118,2
-EC365,AI in Biomedical Signal Interpretation,3-0-2-0-4,Dr. Sibasankar Padhy,0,1,26,2
+Course_Code,Course_Title,L-T-P-S-C,Faculty,Semester_Half,Elective,Students,basket,is_combined
+EC306,Digital Signal Processing,3-0-2-0-4,Dr. Sibasankar Padhy,0,0,55,0,0
+EC301,Introduction to VLSI Design,3-1-0-0-4,Dr.Jagdish D.N,0,0,55,0,0
+EC351,Introduction to Algorithms,3-1-0-0-4,Dr.Jagdish R.B,0,0,55,0,0
+CS463,Parallel computing,3-0-2-0-4,Dr. Pramod Yelmewad,0,1,24,1,0
+CS308,Compiler Design,3-1-0-0-4,Dr. Pavan Kumar,0,1,30,1,0
+DS301,Graphs and Social Network,3-1-0-0-4,Dr. Utkarsh K,0,1,18,2,0
+CS366,Advanced Algorithm Design,3-1-0-0-4,Dr. Suvadip Hazra,0,1,93,1,0
+EC364,Semiconductor Device Modeling,3-1-0-0-4,Dr. Pankaj Kumar,0,1,71,2,0
+DS359,Full Stack Development,3-0-2-0-4,Dr. Manjunath K V,0,1,93,2,0
+EC355,Internet of Things,3-0-2-0-4,Dr. Prakash Pawar,0,1,35,2,0
+CS352,Cryptography & Information Security,3-1-0-0-4,Dr. Rajendra Hegadi,0,1,39,2,0
+ASD352,User Interactions and Experience Design,3-0-2-0-4,Dr Sandesh P,0,1,93,2,0
+EC365,AI in Biomedical Signal Interpretation,3-0-2-0-4,Dr. Sibasankar Padhy,0,1,26,2,0

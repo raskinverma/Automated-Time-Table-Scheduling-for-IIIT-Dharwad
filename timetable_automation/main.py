@@ -1,5 +1,6 @@
 import pandas as pd
 import random
+import re
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment, Border, Side, PatternFill
 RANDOM_SEED = 42
@@ -13,7 +14,16 @@ class Course:
         self.faculty = str(row.get("Faculty", "")).strip()
         self.ltp = str(row["L-T-P-S-C"]).strip()
         self.semester_half = str(row.get("Semester_Half", "0")).strip()
-        self.is_elective = str(row.get("Elective", 0)).strip() == "1"
+        elective_raw = row.get("Elective", 0)
+        elective_str = str(elective_raw).strip().lower()
+        elective_num = 0.0
+        try:
+            elective_num = float(elective_str) if elective_str else 0.0
+        except Exception:
+            elective_num = 1.0 if elective_str in {"true", "yes", "y"} else 0.0
+        self.is_elective = (elective_num > 0) or (self.basket > 0)
+        raw_combined = row.get("is_combined", row.get("Is_Combined", 0))
+        self.is_combined = str(raw_combined).strip().lower() in {"1", "true", "yes", "y"}
         try:
             self.L, self.T, self.P, self.S, self.C = map(int, self.ltp.split("-"))
         except Exception:
@@ -21,7 +31,20 @@ class Course:
 
 
 class Scheduler:
-    def __init__(self, slots_file, courses_file, rooms_file, global_room_usage, global_elective_slots=None):
+    def __init__(
+        self,
+        slots_file,
+        courses_file,
+        rooms_file,
+        global_room_usage,
+        global_elective_slots=None,
+        dept_name="",
+        global_elective_slot_usage=None,
+        global_elective_room_templates=None,
+        global_elective_room_usage=None,
+        global_combined_slots=None,
+        global_combined_room_usage=None,
+    ):
         df = pd.read_csv(slots_file)
         self.slots = [f"{row['Start_Time'].strip()}-{row['End_Time'].strip()}" for _, row in df.iterrows()]
         self.slot_durations = {s: self._slot_duration(s) for s in self.slots}
@@ -54,6 +77,98 @@ class Scheduler:
         self.elective_room_assignment = {}
         self.break_length_slots = 1
         self.global_elective_slots = global_elective_slots if global_elective_slots is not None else {}
+        self.dept_name = str(dept_name).strip()
+        match = re.search(r"\d+", self.dept_name)
+        self.semester_group = match.group(0) if match else "UNKNOWN"
+        self.global_elective_slot_usage = global_elective_slot_usage if global_elective_slot_usage is not None else {}
+        self.global_elective_room_templates = (
+            global_elective_room_templates if global_elective_room_templates is not None else {}
+        )
+        self.global_elective_room_usage = (
+            global_elective_room_usage if global_elective_room_usage is not None else {}
+        )
+        self.global_combined_slots = global_combined_slots if global_combined_slots is not None else {}
+        self.global_combined_room_usage = (
+            global_combined_room_usage if global_combined_room_usage is not None else {}
+        )
+        self.dept_prefix = self.dept_name.split("-")[0].strip().upper() if self.dept_name else ""
+        self.combined_cluster_id = self._resolve_combined_cluster()
+        # Soft constraint: prefer avoiding cross-sem elective overlap, but relax if needed.
+        self.relax_cross_sem_elective_block = True
+
+    def _elective_template_key(self, basket_id, session_type):
+        return (self.semester_group, basket_id, session_type)
+
+    def _resolve_combined_cluster(self):
+        cluster_groups = (
+            {"CSE"},
+            {"DSAI", "ECE"},
+        )
+        for group in cluster_groups:
+            if self.dept_prefix in group:
+                return "+".join(sorted(group))
+        return self.dept_prefix if self.dept_prefix else self.dept_name.upper()
+
+    def _combined_template_key(self, code, session_type, sheet_name):
+        return (self.semester_group, self.combined_cluster_id, sheet_name, code, session_type)
+
+    def _record_combined_slots(self, template_key, day, slots, room):
+        entries = self.global_combined_slots.setdefault(template_key, [])
+        signature = (day, tuple(slots), room)
+        for ent in entries:
+            if (ent.get("day"), tuple(ent.get("slots", [])), ent.get("room", "")) == signature:
+                return
+        entries.append({"day": day, "slots": list(slots), "room": room})
+
+    def _room_matches_session(self, room_id, session_type):
+        room_upper = room_id.upper()
+        if session_type == "P":
+            return room_upper.startswith("L")
+        return not room_upper.startswith("L")
+
+    def _is_room_available(self, day, slots, room_id, combined_key=None):
+        for slot in slots:
+            used_rooms = self.global_room_usage.get(day, {}).get(slot, [])
+            if room_id not in used_rooms:
+                continue
+            if not combined_key:
+                return False
+            owner = self.global_combined_room_usage.get(day, {}).get(slot, {}).get(room_id)
+            if owner != combined_key:
+                return False
+        return True
+
+    def _pick_room_for_slots(self, day, slots, code, session_type, combined_key=None, preferred_room=None):
+        def room_ok(room_id):
+            return self._room_matches_session(room_id, session_type) and self._is_room_available(
+                day, slots, room_id, combined_key=combined_key
+            )
+
+        if preferred_room and room_ok(preferred_room):
+            return preferred_room
+
+        mapped = self.course_room_map.get(code)
+        if mapped and room_ok(mapped):
+            return mapped
+
+        possible_rooms = self.labs if session_type == "P" else self.classrooms
+        room_candidates = possible_rooms.copy()
+        random.shuffle(room_candidates)
+        for room_id in room_candidates:
+            if room_ok(room_id):
+                return room_id
+        return ""
+
+    def _is_blocked_elective_slot(self, day, slot):
+        for sem, used in self.global_elective_slot_usage.items():
+            if sem != self.semester_group and (day, slot) in used:
+                return True
+        return False
+
+    def _reserve_elective_slots(self, day, slots):
+        sem_slots = self.global_elective_slot_usage.setdefault(self.semester_group, set())
+        for s in slots:
+            sem_slots.add((day, s))
 
 
  
@@ -89,7 +204,10 @@ class Scheduler:
         is_elective=False,
         sheet_name=None,
         force_slots=None,
-        min_rooms_needed=1
+        min_rooms_needed=1,
+        relax_elective_block=False,
+        combined_key=None,
+        preferred_room=None,
     ):
        
         for entry in self.scheduled_entries:
@@ -111,11 +229,19 @@ class Scheduler:
                 if timetable.at[day, s] != "":
                     conflict = True
                     break
+                if is_elective and not relax_elective_block and self._is_blocked_elective_slot(day, s):
+                    conflict = True
+                    break
             
             if not conflict:
                 # Check faculty busy
-                if faculty and any(faculty in lecturer_busy[day][s] for s in force_slots):
-                    conflict = True
+                if faculty:
+                    day_busy = lecturer_busy.get(day, {})
+                    if isinstance(day_busy, dict):
+                        if any(faculty in day_busy.get(s, []) for s in force_slots):
+                            conflict = True
+                    elif faculty in day_busy:
+                        conflict = True
                 
             if not conflict:
                 valid_slots_found = force_slots
@@ -160,38 +286,34 @@ class Scheduler:
                 current_slots = cand['slots']
                 
                 # Check faculty availability
-                if faculty and any(faculty in lecturer_busy[day][s] for s in current_slots):
-                    continue 
+                if faculty:
+                    day_busy = lecturer_busy.get(day, {})
+                    if isinstance(day_busy, dict):
+                        if any(faculty in day_busy.get(s, []) for s in current_slots):
+                            continue
+                    elif faculty in day_busy:
+                        continue
 
                 # Check room capacity for electives
                 if is_elective and min_rooms_needed > 1:
                      if any(len(self.all_rooms) - len(self.global_room_usage.get(day, {}).get(s, [])) < min_rooms_needed for s in current_slots):
                          continue
+                if is_elective and not relax_elective_block and any(self._is_blocked_elective_slot(day, s) for s in current_slots):
+                    continue
 
                 # Check Room Availability
                 chosen_room = ""
                 if not is_elective:
-                    mapped = self.course_room_map.get(code)
-                    if mapped:
-                        # Check if mapped room is free
-                        if (session_type == "P" and mapped.upper().startswith("L")) or (session_type != "P" and not mapped.upper().startswith("L")):
-                            if all(mapped not in self.global_room_usage.get(day, {}).get(s, []) for s in current_slots):
-                                chosen_room = mapped
-                            else:
-                                mapped = None # Mapped room busy, try others
-                        else:
-                            mapped = None
-                    
+                    chosen_room = self._pick_room_for_slots(
+                        day,
+                        current_slots,
+                        code,
+                        session_type,
+                        combined_key=combined_key,
+                        preferred_room=preferred_room,
+                    )
                     if not chosen_room:
-                        possible_rooms = self.labs if session_type == "P" else self.classrooms
-                        random.shuffle(possible_rooms)
-                        available_rooms = [
-                            r for r in possible_rooms
-                            if all(r not in self.global_room_usage.get(day, {}).get(s, []) for s in current_slots)
-                        ]
-                        if not available_rooms:
-                             continue
-                        chosen_room = available_rooms[0]
+                        continue
 
                 # Found a valid candidate!
                 valid_slots_found = current_slots
@@ -200,6 +322,18 @@ class Scheduler:
         
         if not valid_slots_found:
             return None
+
+        if not is_elective and not room_to_use:
+            room_to_use = self._pick_room_for_slots(
+                day,
+                valid_slots_found,
+                code,
+                session_type,
+                combined_key=combined_key,
+                preferred_room=preferred_room,
+            )
+            if not room_to_use:
+                return None
 
         # Apply allocation
         slots_to_use = valid_slots_found
@@ -210,7 +344,11 @@ class Scheduler:
             
             if room_to_use:
                 for s in slots_to_use:
-                     self.global_room_usage.setdefault(day, {}).setdefault(s, []).append(room_to_use)
+                     day_slots = self.global_room_usage.setdefault(day, {}).setdefault(s, [])
+                     if room_to_use not in day_slots:
+                         day_slots.append(room_to_use)
+                     if combined_key:
+                         self.global_combined_room_usage.setdefault(day, {}).setdefault(s, {})[room_to_use] = combined_key
 
         for i, s in enumerate(slots_to_use):
             if session_type == "L":
@@ -246,8 +384,18 @@ class Scheduler:
                         timetable.at[day, gap_slot] = "FREE"
 
         if faculty:
-            for s in slots_to_use:
-                lecturer_busy[day][s].append(faculty)
+            day_busy = lecturer_busy.get(day, {})
+            if isinstance(day_busy, dict):
+                day_busy = lecturer_busy.setdefault(day, {})
+                for s in slots_to_use:
+                    day_busy.setdefault(s, []).append(faculty)
+            else:
+                day_busy = lecturer_busy.setdefault(day, day_busy if isinstance(day_busy, list) else [])
+                if faculty not in day_busy:
+                    day_busy.append(faculty)
+
+        if is_elective:
+            self._reserve_elective_slots(day, slots_to_use)
 
         if session_type == "P":
             labs_scheduled[day] = True
@@ -261,9 +409,18 @@ class Scheduler:
                 if timetable.at[day, next_slot] == "":
                     timetable.at[day, next_slot] = "BREAK"
                     if faculty:
-                        lecturer_busy[day][next_slot].append(faculty)
+                        day_busy = lecturer_busy.get(day, {})
+                        if isinstance(day_busy, dict):
+                            day_busy = lecturer_busy.setdefault(day, {})
+                            day_busy.setdefault(next_slot, []).append(faculty)
+                        elif faculty not in day_busy:
+                            day_busy.append(faculty)
                     if not is_elective and room_to_use:
-                        self.global_room_usage.setdefault(day, {}).setdefault(next_slot, []).append(room_to_use)
+                        day_slots = self.global_room_usage.setdefault(day, {}).setdefault(next_slot, [])
+                        if room_to_use not in day_slots:
+                            day_slots.append(room_to_use)
+                        if combined_key:
+                            self.global_combined_room_usage.setdefault(day, {}).setdefault(next_slot, {})[room_to_use] = combined_key
 
         return slots_to_use
 
@@ -310,8 +467,8 @@ class Scheduler:
 
         self.electives_by_sheet[sheet_name] = chosen_electives
 
-        # Sort non-electives to prioritize harder tasks (Labs > Lectures > Tutorials)
-        non_electives.sort(key=lambda c: (c.P, c.L + c.T + c.S), reverse=True)
+        # Sort non-electives to prioritize combined + harder tasks (Combined > Labs > Lectures > Tutorials)
+        non_electives.sort(key=lambda c: (c.is_combined, c.P, c.L + c.T + c.S), reverse=True)
         
         # Prioritize electives:
         all_courses = elective_placeholders + non_electives
@@ -320,15 +477,19 @@ class Scheduler:
             faculty, code, is_elective = course.faculty, course.code, course.code.startswith("Elective_")
             basket_id = int(code.split("_")[1]) if is_elective else None
             min_rooms = basket_sizes.get(basket_id, 1) if is_elective else 1
+            is_combined = bool(getattr(course, "is_combined", False) and not is_elective)
 
             # --- Lecture Scheduling ---
             # Prepare to schedule. If elective and global slots exist, use them.
             
             forced_allocations_L = []
             if is_elective:
-                key = (basket_id, "L")
+                key = self._elective_template_key(basket_id, "L")
                 if key in self.global_elective_slots:
                     forced_allocations_L = self.global_elective_slots[key]
+            combined_key_L = self._combined_template_key(code, "L", sheet_name) if is_combined else None
+            if is_combined and combined_key_L in self.global_combined_slots:
+                forced_allocations_L = self.global_combined_slots[combined_key_L]
 
             remaining = course.L
             
@@ -342,10 +503,43 @@ class Scheduler:
                     duration = sum(self.slot_durations[s] for s in slots)
                     # Try to allocate forced slots
                     res = self._allocate_session(
-                         timetable, lecturer_busy, labs_scheduled, day, faculty, code, duration, "L", is_elective, sheet_name, force_slots=slots, min_rooms_needed=min_rooms
+                         timetable,
+                         lecturer_busy,
+                         labs_scheduled,
+                         day,
+                         faculty,
+                         code,
+                         duration,
+                         "L",
+                         is_elective,
+                         sheet_name,
+                         force_slots=slots,
+                         min_rooms_needed=min_rooms,
+                         combined_key=combined_key_L,
+                         preferred_room=alloc.get("room") if is_combined else None,
                     )
+                    if not res and is_elective and self.relax_cross_sem_elective_block:
+                        res = self._allocate_session(
+                            timetable,
+                            lecturer_busy,
+                            labs_scheduled,
+                            day,
+                            faculty,
+                            code,
+                            duration,
+                            "L",
+                            is_elective,
+                            sheet_name,
+                            force_slots=slots,
+                            min_rooms_needed=min_rooms,
+                            relax_elective_block=True,
+                            combined_key=combined_key_L,
+                        )
                     if res:
                         remaining -= duration
+                        if is_combined:
+                            room = self.scheduled_entries[-1].get("room", "") if self.scheduled_entries else ""
+                            self._record_combined_slots(combined_key_L, day, res, room)
             
             # Standard stochastic scheduling (runs if not fully scheduled by force)
             attempts = 0
@@ -359,15 +553,46 @@ class Scheduler:
                     alloc_dur = min(1.5, remaining)
                     
                     allocated_slots = self._allocate_session(
-                        timetable, lecturer_busy, labs_scheduled, day, faculty, code, alloc_dur, "L", is_elective, sheet_name, min_rooms_needed=min_rooms
+                        timetable,
+                        lecturer_busy,
+                        labs_scheduled,
+                        day,
+                        faculty,
+                        code,
+                        alloc_dur,
+                        "L",
+                        is_elective,
+                        sheet_name,
+                        min_rooms_needed=min_rooms,
+                        combined_key=combined_key_L,
                     )
+                    if not allocated_slots and is_elective and self.relax_cross_sem_elective_block:
+                        allocated_slots = self._allocate_session(
+                            timetable,
+                            lecturer_busy,
+                            labs_scheduled,
+                            day,
+                            faculty,
+                            code,
+                            alloc_dur,
+                            "L",
+                            is_elective,
+                            sheet_name,
+                            min_rooms_needed=min_rooms,
+                            relax_elective_block=True,
+                            combined_key=combined_key_L,
+                        )
                     if allocated_slots:
                         remaining -= alloc_dur
                         if is_elective:
-                            self.global_elective_slots.setdefault((basket_id, "L"), []).append({
+                            key = self._elective_template_key(basket_id, "L")
+                            self.global_elective_slots.setdefault(key, []).append({
                                 'day': day,
                                 'slots': allocated_slots
                             })
+                        if is_combined:
+                            room = self.scheduled_entries[-1].get("room", "") if self.scheduled_entries else ""
+                            self._record_combined_slots(combined_key_L, day, allocated_slots, room)
                         break
 
             if remaining > 0:
@@ -384,9 +609,12 @@ class Scheduler:
             # --- Tutorial Scheduling ---
             forced_allocations_T = []
             if is_elective:
-                key = (basket_id, "T")
+                key = self._elective_template_key(basket_id, "T")
                 if key in self.global_elective_slots:
                     forced_allocations_T = self.global_elective_slots[key]
+            combined_key_T = self._combined_template_key(code, "T", sheet_name) if is_combined else None
+            if is_combined and combined_key_T in self.global_combined_slots:
+                forced_allocations_T = self.global_combined_slots[combined_key_T]
 
             remaining = course.T
             if forced_allocations_T:
@@ -396,10 +624,43 @@ class Scheduler:
                     day = alloc['day']
                     slots = alloc['slots']
                     res = self._allocate_session(
-                         timetable, lecturer_busy, labs_scheduled, day, faculty, code, 1, "T", is_elective, sheet_name, force_slots=slots, min_rooms_needed=min_rooms
+                         timetable,
+                         lecturer_busy,
+                         labs_scheduled,
+                         day,
+                         faculty,
+                         code,
+                         1,
+                         "T",
+                         is_elective,
+                         sheet_name,
+                         force_slots=slots,
+                         min_rooms_needed=min_rooms,
+                         combined_key=combined_key_T,
+                         preferred_room=alloc.get("room") if is_combined else None,
                     )
+                    if not res and is_elective and self.relax_cross_sem_elective_block:
+                        res = self._allocate_session(
+                            timetable,
+                            lecturer_busy,
+                            labs_scheduled,
+                            day,
+                            faculty,
+                            code,
+                            1,
+                            "T",
+                            is_elective,
+                            sheet_name,
+                            force_slots=slots,
+                            min_rooms_needed=min_rooms,
+                            relax_elective_block=True,
+                            combined_key=combined_key_T,
+                        )
                     if res:
                         remaining -= 1
+                        if is_combined:
+                            room = self.scheduled_entries[-1].get("room", "") if self.scheduled_entries else ""
+                            self._record_combined_slots(combined_key_T, day, res, room)
 
             attempts = 0
             while remaining > 0 and attempts < self.MAX_ATTEMPTS:
@@ -411,15 +672,46 @@ class Scheduler:
                         continue
                     
                     allocated_slots = self._allocate_session(
-                        timetable, lecturer_busy, labs_scheduled, day, faculty, code, 1, "T", is_elective, sheet_name, min_rooms_needed=min_rooms
+                        timetable,
+                        lecturer_busy,
+                        labs_scheduled,
+                        day,
+                        faculty,
+                        code,
+                        1,
+                        "T",
+                        is_elective,
+                        sheet_name,
+                        min_rooms_needed=min_rooms,
+                        combined_key=combined_key_T,
                     )
+                    if not allocated_slots and is_elective and self.relax_cross_sem_elective_block:
+                        allocated_slots = self._allocate_session(
+                            timetable,
+                            lecturer_busy,
+                            labs_scheduled,
+                            day,
+                            faculty,
+                            code,
+                            1,
+                            "T",
+                            is_elective,
+                            sheet_name,
+                            min_rooms_needed=min_rooms,
+                            relax_elective_block=True,
+                            combined_key=combined_key_T,
+                        )
                     if allocated_slots:
                         remaining -= 1
                         if is_elective:
-                            self.global_elective_slots.setdefault((basket_id, "T"), []).append({
+                            key = self._elective_template_key(basket_id, "T")
+                            self.global_elective_slots.setdefault(key, []).append({
                                 'day': day,
                                 'slots': allocated_slots
                             })
+                        if is_combined:
+                            room = self.scheduled_entries[-1].get("room", "") if self.scheduled_entries else ""
+                            self._record_combined_slots(combined_key_T, day, allocated_slots, room)
                         break
 
             if remaining > 0:
@@ -436,9 +728,12 @@ class Scheduler:
             # --- Lab Scheduling ---
             forced_allocations_P = []
             if is_elective:
-                key = (basket_id, "P")
+                key = self._elective_template_key(basket_id, "P")
                 if key in self.global_elective_slots:
                     forced_allocations_P = self.global_elective_slots[key]
+            combined_key_P = self._combined_template_key(code, "P", sheet_name) if is_combined else None
+            if is_combined and combined_key_P in self.global_combined_slots:
+                forced_allocations_P = self.global_combined_slots[combined_key_P]
 
             remaining = course.P
             if forced_allocations_P:
@@ -449,10 +744,43 @@ class Scheduler:
                     slots = alloc['slots']
                     duration = sum(self.slot_durations[s] for s in slots)
                     res = self._allocate_session(
-                         timetable, lecturer_busy, labs_scheduled, day, faculty, code, duration, "P", is_elective, sheet_name, force_slots=slots, min_rooms_needed=min_rooms
+                         timetable,
+                         lecturer_busy,
+                         labs_scheduled,
+                         day,
+                         faculty,
+                         code,
+                         duration,
+                         "P",
+                         is_elective,
+                         sheet_name,
+                         force_slots=slots,
+                         min_rooms_needed=min_rooms,
+                         combined_key=combined_key_P,
+                         preferred_room=alloc.get("room") if is_combined else None,
                     )
+                    if not res and is_elective and self.relax_cross_sem_elective_block:
+                        res = self._allocate_session(
+                            timetable,
+                            lecturer_busy,
+                            labs_scheduled,
+                            day,
+                            faculty,
+                            code,
+                            duration,
+                            "P",
+                            is_elective,
+                            sheet_name,
+                            force_slots=slots,
+                            min_rooms_needed=min_rooms,
+                            relax_elective_block=True,
+                            combined_key=combined_key_P,
+                        )
                     if res:
                         remaining -= duration
+                        if is_combined:
+                            room = self.scheduled_entries[-1].get("room", "") if self.scheduled_entries else ""
+                            self._record_combined_slots(combined_key_P, day, res, room)
             
             attempts = 0
             while remaining > 0 and attempts < self.MAX_ATTEMPTS:
@@ -466,15 +794,46 @@ class Scheduler:
                     alloc_dur = min(2, remaining) if remaining >= 2 else remaining
                     
                     allocated_slots = self._allocate_session(
-                        timetable, lecturer_busy, labs_scheduled, day, faculty, code, alloc_dur, "P", is_elective, sheet_name, min_rooms_needed=min_rooms
+                        timetable,
+                        lecturer_busy,
+                        labs_scheduled,
+                        day,
+                        faculty,
+                        code,
+                        alloc_dur,
+                        "P",
+                        is_elective,
+                        sheet_name,
+                        min_rooms_needed=min_rooms,
+                        combined_key=combined_key_P,
                     )
+                    if not allocated_slots and is_elective and self.relax_cross_sem_elective_block:
+                        allocated_slots = self._allocate_session(
+                            timetable,
+                            lecturer_busy,
+                            labs_scheduled,
+                            day,
+                            faculty,
+                            code,
+                            alloc_dur,
+                            "P",
+                            is_elective,
+                            sheet_name,
+                            min_rooms_needed=min_rooms,
+                            relax_elective_block=True,
+                            combined_key=combined_key_P,
+                        )
                     if allocated_slots:
                         remaining -= alloc_dur
                         if is_elective:
-                            self.global_elective_slots.setdefault((basket_id, "P"), []).append({
+                            key = self._elective_template_key(basket_id, "P")
+                            self.global_elective_slots.setdefault(key, []).append({
                                 'day': day,
                                 'slots': allocated_slots
                             })
+                        if is_combined:
+                            room = self.scheduled_entries[-1].get("room", "") if self.scheduled_entries else ""
+                            self._record_combined_slots(combined_key_P, day, allocated_slots, room)
                         break
 
             if remaining > 0:
@@ -509,7 +868,19 @@ class Scheduler:
         # Local usage tracker for electives in this sheet: day -> slot -> set of rooms used
         local_room_usage = {} 
 
-        candidate_rooms = list(self.classrooms) + list(self.labs)
+        def is_display_room_free(day, slot, room, owner_key, check_non_elective_usage=True):
+            if check_non_elective_usage and room in self.global_room_usage.get(day, {}).get(slot, []):
+                return False
+            used_by = self.global_elective_room_usage.get(day, {}).get(slot, {}).get(room)
+            if used_by is not None and used_by != owner_key:
+                return False
+            if room in local_room_usage.get(day, {}).get(slot, set()):
+                return False
+            return True
+
+        def reserve_display_room(day, slot, room, owner_key):
+            local_room_usage.setdefault(day, {}).setdefault(slot, set()).add(room)
+            self.global_elective_room_usage.setdefault(day, {}).setdefault(slot, {})[room] = owner_key
 
         for basket in sorted(active_baskets):
             basket_code = f"Elective_{basket}"
@@ -534,43 +905,60 @@ class Scheduler:
             # If no slots, room assignment is arbitrary (free).
             
             basket_electives = [c for c in self.courses if c.is_elective and c.basket == basket]
+            # For electives that have lecture slots, restrict rooms to classrooms so lectures never land in labs.
+            # Pure-lab electives still prefer labs first but can spill into classrooms if needed.
+            if lecture_slots:
+                candidate_rooms = sorted(self.classrooms)
+            else:
+                candidate_rooms = sorted(self.labs) + sorted(self.classrooms)
             
             for elective in basket_electives:
                 key = f"Elective_{basket}||{elective.title}"
+                template_key = (self.semester_group, sheet_name, basket, elective.title.strip().lower())
+                preferred_room = self.global_elective_room_templates.get(template_key)
                 
                 # OPTIMIZATION: Try to find ONE stable room for all slots first
                 stable_room = None
                 
                 # Check all rooms for stability
-                # Preference order: Classrooms first if this course actually has lectures (to avoid putting lectures in labs ideally)
-                
-                search_order = sorted(self.classrooms)
-                if not lecture_slots: # If pure lab course, prefer labs
-                     search_order = sorted(self.labs) + sorted(self.classrooms)
-                
-                for r in search_order: 
-                     is_universally_free = True
-                     for day, slot in basket_slots:
-                         # Global check
-                         if r in self.global_room_usage.get(day, {}).get(slot, []):
-                             is_universally_free = False
+                # Preference order is driven by candidate_rooms computed above.
+                search_order = candidate_rooms
+
+                if preferred_room:
+                    preferred_free = True
+                    for day, slot in basket_slots:
+                        if not is_display_room_free(
+                            day,
+                            slot,
+                            preferred_room,
+                            template_key,
+                            check_non_elective_usage=False,
+                        ):
+                            preferred_free = False
+                            break
+                    if preferred_free:
+                        stable_room = preferred_room
+
+                if not stable_room:
+                    for r in search_order: 
+                         is_universally_free = True
+                         for day, slot in basket_slots:
+                             if not is_display_room_free(day, slot, r, template_key):
+                                 is_universally_free = False
+                                 break
+                         
+                         if is_universally_free:
+                             stable_room = r
                              break
-                         # Local check
-                         if r in local_room_usage.get(day, {}).get(slot, set()):
-                             is_universally_free = False
-                             break
-                     
-                     if is_universally_free:
-                         stable_room = r
-                         break
                 
                 used_rooms_for_this_elective = []
                 
                 if stable_room:
                     # Perfect! We found one room for everything.
                     for day, slot in basket_slots:
-                        local_room_usage.setdefault(day, {}).setdefault(slot, set()).add(stable_room)
+                        reserve_display_room(day, slot, stable_room, template_key)
                     used_rooms_for_this_elective.append(stable_room)
+                    self.global_elective_room_templates[template_key] = stable_room
                 else:
                     # Fallback: Assign room PER SLOT
                     room_assignments = [] # List of (day, room)
@@ -589,21 +977,25 @@ class Scheduler:
                         chosen_for_slot = None
                         
                         for r in candidates_ordered:
-                            if r in self.global_room_usage.get(day, {}).get(slot, []): continue
-                            if r in local_room_usage.get(day, {}).get(slot, set()): continue
+                            if not is_display_room_free(day, slot, r, template_key):
+                                continue
                             chosen_for_slot = r
                             break
                         
                         if not chosen_for_slot:
                              for r in sorted(self.all_rooms):
-                                 if r not in self.global_room_usage.get(day, {}).get(slot, []):
+                                 if is_display_room_free(day, slot, r, template_key):
                                      chosen_for_slot = r
                                      break
                         
                         if chosen_for_slot:
-                            local_room_usage.setdefault(day, {}).setdefault(slot, set()).add(chosen_for_slot)
+                            reserve_display_room(day, slot, chosen_for_slot, template_key)
                             room_assignments.append((day, chosen_for_slot))
                             last_used_room = chosen_for_slot
+                    if room_assignments:
+                        unique_rooms = {r for _, r in room_assignments}
+                        if len(unique_rooms) == 1:
+                            self.global_elective_room_templates[template_key] = next(iter(unique_rooms))
 
                 # Format the room string
                 if stable_room:
@@ -949,7 +1341,8 @@ if __name__ == "__main__":
         "CSE-3-B": "data/coursesCSEB-III.csv",
         "CSE-1-A": "data/coursesCSEA-I.csv",
         "CSE-1-B": "data/coursesCSEB-I.csv",
-        "CSE-5": "data/coursesCSE-V.csv",
+        "CSE-5-A": "data/coursesCSEA-V.csv",
+        "CSE-5-B": "data/coursesCSEB-V.csv",
         "7-SEM": "data/courses7.csv",
         "DSAI-3": "data/coursesDSAI-III.csv",
         "ECE-3": "data/coursesECE-III.csv",
@@ -964,11 +1357,28 @@ if __name__ == "__main__":
     combined_faculty_filename = "faculty_timetable.xlsx"
     
     global_elective_slots = {}
+    global_elective_slot_usage = {}
+    global_elective_room_templates = {}
+    global_elective_room_usage = {}
+    global_combined_slots = {}
+    global_combined_room_usage = {}
     all_scheduled_entries = []
 
     for dept_name, course_file in departments.items():
         print(f"\nGenerating student timetable for {dept_name}...")
-        scheduler = Scheduler(slots_file, course_file, rooms_file, global_room_usage, global_elective_slots)
+        scheduler = Scheduler(
+            slots_file,
+            course_file,
+            rooms_file,
+            global_room_usage,
+            global_elective_slots,
+            dept_name=dept_name,
+            global_elective_slot_usage=global_elective_slot_usage,
+            global_elective_room_templates=global_elective_room_templates,
+            global_elective_room_usage=global_elective_room_usage,
+            global_combined_slots=global_combined_slots,
+            global_combined_room_usage=global_combined_room_usage,
+        )
         student_file = f"{dept_name}_timetable.xlsx"
         scheduler.run_all_outputs(dept_name_prefix=dept_name, student_filename=student_file, faculty_filename=combined_faculty_filename)
 
@@ -980,7 +1390,18 @@ if __name__ == "__main__":
         df = pd.read_csv(course_file)
         for _, row in df.iterrows():
             combined_courses.append(Course(row))
-    helper = Scheduler(slots_file, departments[list(departments.keys())[0]], rooms_file, global_room_usage, global_elective_slots)
+    helper = Scheduler(
+        slots_file,
+        departments[list(departments.keys())[0]],
+        rooms_file,
+        global_room_usage,
+        global_elective_slots,
+        global_elective_slot_usage=global_elective_slot_usage,
+        global_elective_room_templates=global_elective_room_templates,
+        global_elective_room_usage=global_elective_room_usage,
+        global_combined_slots=global_combined_slots,
+        global_combined_room_usage=global_combined_room_usage,
+    )
     helper.courses = combined_courses
     helper.scheduled_entries = all_scheduled_entries 
     helper._generate_faculty_workbook(combined_faculty_filename)

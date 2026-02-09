@@ -1,11 +1,14 @@
-Course_Code,Course_Title,L-T-P-S-C,Faculty,Is_Combined,Semester_Half,Elective,Students,basket
-CS151,Introduction to Cybersecurity,3-0-0-4-2,Dr. Girish Revadigar,1,1,1,28,1
-CS161,Problem solving through Programming,3-0-2-0-4,Dr. Sunil C K/Dr. Sunil Kumar P V,0,0,0,85,0
-DS151,Linux for Engineers,3-0-0-0-2,Dr. Vivekraj V K,1,1,1,28,1
-EC161,Digital Design,3-0-2-0-2,Dr. Prakash Pawar,1,1,0,85,0
-MA162,Probability,3-0-0-0-2,Dr. Chinmayananda,1,1,0,85,0
-PH151,Introduction to Quantum Physics,3-0-0-0-2,Dr. Aswath Babu,1,1,1,28,1
-FS161,Fundamentals of Sensing and Control,3-0-0-0-2,Mr. Mallikarjun Kande,1,2,1,35,1
-LT151,Leveraging IT for Social Good & CSR,3-0-0-0-2,Dr. Rajesh N S,1,2,1,20,1
-BD151,Basics of Design,3-0-0-0-2,Dr. Sandesh P,1,2,1,54,1
-HS156,Holistic Personality Development,3-0-0-0-1,Dr. Rajesh N S,1,2,1,42,1
+Course_Code,Course_Title,L-T-P-S-C,Faculty,Semester_Half,Elective,Students,basket,is_combined
+CS151,Introduction to Cybersecurity,3-0-0-4-2,Dr. Girish Revadigar,1,1,28,1,0
+CS161,Problem solving through Programming,3-0-2-0-4,Dr. Sunil Kumar P V,0,0,85,0,0
+DS151,Linux for Engineers,3-0-0-0-2,Dr. Vivekraj V K,1,1,28,1,0
+EC161,Digital Design,3-0-2-0-2,Dr. Prakash Pawar,1,0,85,0,1
+MA162,Probability,3-0-0-0-2,Dr. Chinmayananda,1,0,85,0,1
+PH151,Introduction to Quantum Physics,3-0-0-0-2,Dr. Aswath Babu,1,1,28,1,0
+FS161,Fundamentals of Sensing and Control,3-0-0-0-2,Mr. Mallikarjun Kande,2,1,35,1,0
+LT151,Leveraging IT for Social Good & CSR,3-0-0-0-2,Dr. Rajesh N S,2,1,20,1,0
+BD151,Basics of Design,3-0-0-0-2,Dr. Sandesh P,2,1,54,1,0
+HS156,Holistic Personality Development,3-0-0-0-1,Dr. Rajesh N S,2,1,42,1,0
+CS315,Statistics ,3-1-0-0-2,Dr. Ramesh Athe,2,0,75,0,1
+CS318,Introduction to DS and AI,3-1-0-0-2,Dr. Girish Revadigar,2,0,75,0,1
+HS161,English Language and Communication,3-1-0-0-2,Dr. Rajesh N S,2,0,75,0,0
