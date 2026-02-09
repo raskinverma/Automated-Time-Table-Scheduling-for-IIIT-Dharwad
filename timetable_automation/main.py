@@ -921,8 +921,10 @@ class Scheduler:
 
         if self.unscheduled_courses:
             unsched_file = f"{dept_name_prefix}_unscheduled_courses.xlsx"
-            pd.DataFrame(self.unscheduled_courses).to_excel(unsched_file, index=False)
+            df_unsched = pd.DataFrame(self.unscheduled_courses)
+            df_unsched.to_excel(unsched_file, index=False)
             print(f"Some courses couldn't be scheduled. See '{unsched_file}' for details.")
+            print(df_unsched.to_string(index=False))
         wb = load_workbook(student_filename)
         for default in ["Sheet", "Sheet1"]:
             if default in wb.sheetnames and len(wb.sheetnames) > 1:
