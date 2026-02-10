@@ -2,7 +2,7 @@ import pandas as pd
 import random
 import re
 from openpyxl import load_workbook
-from openpyxl.styles import Alignment, Border, Side, PatternFill
+from openpyxl.styles import Alignment, Border, Side, PatternFill, Font
 RANDOM_SEED = 42
 random.seed(RANDOM_SEED)
 
@@ -1475,16 +1475,46 @@ class Scheduler:
             slot = ent["slot"]
             display = ent["display"]
             sheet = ent["sheet"]
+            code = ent.get("code", "")
+            base_display = display
+
+            # Handle Elective Expansion: Include all courses in basket
+            if code.startswith("Elective_"):
+                try:
+                    basket = int(code.split("_")[1])
+                    basket_courses = [
+                        c for c in self.courses 
+                        if c.is_elective and c.basket == basket and self._course_in_sheet_half(c, sheet)
+                    ]
+                    
+                    if basket_courses:
+                        for course in basket_courses:
+                            current_faculties = [p.strip() for p in course.faculty.split("/") if p.strip()] if course.faculty else []
+                            
+                            course_display = base_display.replace(code, course.code) if code in base_display else base_display
+
+                            for f in current_faculties:
+                                if f in faculty_tables:
+                                    faculty_tables[f][sheet].at[day, slot] = course_display
+                        continue
+                except Exception:
+                    pass
+
+            # Standard Logic (Fallback)
             if ent.get("faculty"):
                 faculties = [p.strip() for p in ent["faculty"].split("/") if p.strip()]
             else:
-                matched = [c for c in self.courses if c.code == ent.get("code")]
+                matched = [c for c in self.courses if c.code == code]
                 faculties = []
                 for m in matched:
-                    faculties.extend([p.strip() for p in m.faculty.split("/") if p.strip()])
+                    if m.faculty:
+                        faculties.extend([p.strip() for p in m.faculty.split("/") if p.strip()])
 
+            faculties = list(set(faculties))
+            
             for f in faculties:
-                faculty_tables[f][sheet].at[day, slot] = display
+                if f in faculty_tables:
+                    faculty_tables[f][sheet].at[day, slot] = base_display
 
         with pd.ExcelWriter(faculty_filename, engine="openpyxl") as writer:
             for f in sorted(faculty_tables.keys()):
@@ -1492,20 +1522,27 @@ class Scheduler:
                 df_first = faculty_tables[f]["First_Half"]
                 df_second = faculty_tables[f]["Second_Half"]
 
-                combined = pd.DataFrame()
-                combined[" "] = [""] * (len(self.days) + 2)
-                temp = df_first.reset_index()
-                temp.columns = ["Day"] + list(df_first.columns)
-                combined_first = temp
+                cols = ["Day"] + list(df_first.columns)
 
-                spacer = pd.DataFrame([[""] * temp.shape[1]], columns=temp.columns)
+                # Helper to create single-row DF
+                def make_row(values):
+                    return pd.DataFrame([values], columns=cols)
 
-                temp2 = df_second.reset_index()
-                temp2.columns = ["Day"] + list(df_second.columns)
-                combined_second = temp2
+                # Components
+                title1 = make_row(["First Half"] + [""] * (len(cols) - 1))
+                title2 = make_row(["Second Half"] + [""] * (len(cols) - 1))
+                header = make_row(cols)
+                spacer = make_row([""] * len(cols))
 
-                final = pd.concat([combined_first, spacer, combined_second], ignore_index=True)
-                final.to_excel(writer, sheet_name=safe, index=False)
+                d1 = df_first.reset_index()
+                d1.columns = cols
+                d2 = df_second.reset_index()
+                d2.columns = cols
+
+                # Assemble: Title1 -> Header -> Data1 -> Spacer -> Title2 -> Header -> Data2
+                final = pd.concat([title1, header, d1, spacer, title2, header, d2], ignore_index=True)
+                
+                final.to_excel(writer, sheet_name=safe, index=False, header=False)
 
         wb = load_workbook(faculty_filename)
         thin = Border(left=Side(style="thin"), right=Side(style="thin"), top=Side(style="thin"), bottom=Side(style="thin"))
@@ -1515,12 +1552,36 @@ class Scheduler:
 
         for sheet in wb.sheetnames:
             ws = wb[sheet]
-            for row in range(2, ws.max_row + 1):
+            header_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
+            header_font = Font(bold=True)
+
+            for row in range(1, ws.max_row + 1):
+                # Check for header row
+                first_cell_val = str(ws.cell(row, 1).value).strip() if ws.cell(row, 1).value else ""
+                
+                if first_cell_val == "Day":
+                    # Apply header style
+                    for col in range(1, ws.max_column + 1):
+                        cell = ws.cell(row, col)
+                        cell.fill = header_fill
+                        cell.font = header_font
+                        cell.alignment = Alignment(horizontal="center", vertical="center")
+                        cell.border = thin
+                    continue
+
+                if row == 1: 
+                    # Probably "First Half" title or spacer/title
+                    # We can style titles if we want, but user asked about timeslots (headers)
+                    # Just ensuring we don't process row 1 as data if it's a title
+                    continue
+                
                 start_col = 2
                 while start_col <= ws.max_column:
                     cell = ws.cell(row=row, column=start_col)
-                    if cell.value and str(cell.value).strip() not in ["FREE", ""]:
-                        raw_code = str(cell.value).split(" ")[0].rstrip("T")
+                    val = str(cell.value).strip() if cell.value else ""
+                    
+                    if val and val not in ["FREE", ""]:
+                        raw_code = val.split(" ")[0].rstrip("T")
                         if raw_code not in color_map:
                             color_map[raw_code] = palette[color_index % len(palette)]
                             color_index += 1
