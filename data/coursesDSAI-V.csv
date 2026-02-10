@@ -1,7 +1,7 @@
 Course_Code,Course_Title,L-T-P-S-C,Faculty,Semester_Half,Elective,Students,basket,is_combined
 DS302,Computer Communication Networks,3-1-2-0-5,Dr. Shirshendu Layek,0,0,75,0,0
 DS303,Algorithms and Artificial Intelligence,3-1-0-0-4,Dr. Animesh Chaturvedi,0,0,75,0,0
-CS307,Machine Learning,3-0-2-0-4,Dr. Siddharth,0,0,75,0,0
+CS307,Machine Learning,3-0-0-0-4,Dr. Siddharth,0,0,75,0,0
 CS463,Parallel computing,3-0-2-0-4,Dr. Pramod Yelmewad,0,1,24,1,0
 CS308,Compiler Design,3-1-0-0-4,Dr. Pavan Kumar,0,1,30,1,0
 DS301,Graphs and Social Network,3-1-0-0-4,Dr. Utkarsh K,0,1,18,2,0
