@@ -1155,8 +1155,28 @@ class Scheduler:
             
             for elective in basket_electives:
                 key = f"Elective_{basket}||{elective.title}"
-                template_key = (self.semester_group, sheet_name, basket, elective.title.strip().lower())
-                preferred_room = self.global_elective_room_templates.get(template_key)
+                legacy_template_key = (
+                    self.semester_group,
+                    sheet_name,
+                    basket,
+                    elective.title.strip().lower(),
+                )
+                code_key = str(getattr(elective, "code", "")).strip().upper()
+                code_template_key = (
+                    self.semester_group,
+                    sheet_name,
+                    "__CODE__",
+                    code_key,
+                ) if code_key else None
+                template_keys = [k for k in (code_template_key, legacy_template_key) if k is not None]
+                template_owner_key = template_keys[0]
+
+                preferred_room = ""
+                for tk in template_keys:
+                    room = self.global_elective_room_templates.get(tk)
+                    if room:
+                        preferred_room = room
+                        break
                 
                 # OPTIMIZATION: Try to find ONE stable room for all slots first
                 stable_room = None
@@ -1172,7 +1192,7 @@ class Scheduler:
                             day,
                             slot,
                             preferred_room,
-                            template_key,
+                            template_owner_key,
                             check_non_elective_usage=False,
                         ):
                             preferred_free = False
@@ -1184,7 +1204,7 @@ class Scheduler:
                     for r in search_order: 
                          is_universally_free = True
                          for day, slot in basket_slots:
-                             if not is_display_room_free(day, slot, r, template_key):
+                             if not is_display_room_free(day, slot, r, template_owner_key):
                                  is_universally_free = False
                                  break
                          
@@ -1197,9 +1217,10 @@ class Scheduler:
                 if stable_room:
                     # Perfect! We found one room for everything.
                     for day, slot in basket_slots:
-                        reserve_display_room(day, slot, stable_room, template_key)
+                        reserve_display_room(day, slot, stable_room, template_owner_key)
                     used_rooms_for_this_elective.append(stable_room)
-                    self.global_elective_room_templates[template_key] = stable_room
+                    for tk in template_keys:
+                        self.global_elective_room_templates[tk] = stable_room
                 else:
                     # Fallback: Assign room PER SLOT
                     room_assignments = [] # List of (day, room)
@@ -1218,27 +1239,29 @@ class Scheduler:
                         chosen_for_slot = None
                         
                         for r in candidates_ordered:
-                            if not is_display_room_free(day, slot, r, template_key):
+                            if not is_display_room_free(day, slot, r, template_owner_key):
                                 continue
                             chosen_for_slot = r
                             break
                         
                         if not chosen_for_slot:
-                             for r in sorted(self.all_rooms):
-                                 if not self._room_allowed_for_course(r, is_compulsory=False):
-                                     continue
-                                 if is_display_room_free(day, slot, r, template_key):
-                                     chosen_for_slot = r
-                                     break
+                            for r in sorted(self.all_rooms):
+                                if not self._room_allowed_for_course(r, is_compulsory=False):
+                                    continue
+                                if is_display_room_free(day, slot, r, template_owner_key):
+                                    chosen_for_slot = r
+                                    break
                         
                         if chosen_for_slot:
-                            reserve_display_room(day, slot, chosen_for_slot, template_key)
+                            reserve_display_room(day, slot, chosen_for_slot, template_owner_key)
                             room_assignments.append((day, chosen_for_slot))
                             last_used_room = chosen_for_slot
                     if room_assignments:
                         unique_rooms = {r for _, r in room_assignments}
                         if len(unique_rooms) == 1:
-                            self.global_elective_room_templates[template_key] = next(iter(unique_rooms))
+                            single_room = next(iter(unique_rooms))
+                            for tk in template_keys:
+                                self.global_elective_room_templates[tk] = single_room
 
                 # Format the room string
                 if stable_room:
